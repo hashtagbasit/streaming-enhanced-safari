@@ -10,6 +10,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	var webView: WKWebView!
 	var hud: NSTextField!
 	var hudVisible = true
+	let bridge = Bridge()
+	let world = WKContentWorld.world(name: "streaming-enhanced")
+	var injectedSite: String?
+
+	// Which flattened bundle to inject for a given host.
+	private static let siteForHost: [(match: String, site: String)] = [
+		("netflix.", "netflix"),
+		("primevideo.", "amazon"), ("amazon.", "amazon"),
+		("disneyplus.", "disney"), ("hotstar.", "disney"), ("starplus.", "disney"),
+		("jiostar.", "disney"), ("jiocinema.", "disney"),
+		("max.com", "max"), ("hbomax.", "max"),
+		("paramountplus.", "paramount"),
+		("crunchyroll.", "crunchyroll"),
+	]
 
 	// Matches Safari so sites don't serve a degraded or blocked experience.
 	private let safariUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
@@ -36,6 +50,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 				NSLog("enabled WKPreferences.%@", key)
 			}
 		}
+
+		// An isolated content world keeps the extension's globals away from the
+		// site's own, the way a real content script is isolated, and sidesteps the
+		// page CSP that would otherwise block what we inject.
+		config.userContentController.addScriptMessageHandler(bridge, contentWorld: world, name: "se")
 
 		webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: config)
 		webView.customUserAgent = safariUA
@@ -208,6 +227,41 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		}
 	}
 
+	// MARK: - Extension injection
+
+	private func site(forHost host: String) -> String? {
+		AppDelegate.siteForHost.first { host.contains($0.match) }?.site
+	}
+
+	// Swapped before the load commits, so the script still lands at document start.
+	func installUserScript(forHost host: String) {
+		let wanted = site(forHost: host)
+		guard wanted != injectedSite else { return }
+		injectedSite = wanted
+
+		let ucc = webView.configuration.userContentController
+		ucc.removeAllUserScripts()
+		guard let wanted = wanted else { return }
+		guard let url = Bundle.main.url(forResource: wanted + ".userscript", withExtension: "js"),
+		      let source = try? String(contentsOf: url, encoding: .utf8) else {
+			NSLog("no bundled userscript for %@", wanted); return
+		}
+		ucc.addUserScript(WKUserScript(source: source,
+		                               injectionTime: .atDocumentStart,
+		                               forMainFrameOnly: true,
+		                               in: world))
+		NSLog("injecting %@ userscript (%d bytes)", wanted, source.count)
+	}
+
+	func webView(_ w: WKWebView,
+	             decidePolicyFor navigationAction: WKNavigationAction,
+	             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+		if navigationAction.targetFrame?.isMainFrame ?? true, let host = navigationAction.request.url?.host {
+			installUserScript(forHost: host)
+		}
+		decisionHandler(.allow)
+	}
+
 	// MARK: - WKNavigationDelegate
 
 	func webView(_ w: WKWebView, didFinish n: WKNavigation!) {
@@ -218,6 +272,100 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	func webView(_ w: WKWebView, didFail n: WKNavigation!, withError e: Error) {
 		NSLog("navigation failed: %@", e.localizedDescription)
 	}
+}
+
+
+// MARK: - Native bridge
+
+// Backs browser.storage and the ratings fetch. Storage goes to UserDefaults
+// rather than localStorage so settings are shared across every streaming site
+// instead of being siloed per origin, matching how the extension behaves.
+// The fetch goes through native so the ratings lookups aren't subject to CORS.
+final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
+
+	private func defaultsKey(_ area: String, _ key: String) -> String { "se.\(area).\(key)" }
+
+	private func read(_ area: String, _ key: String) -> Any? {
+		guard let data = UserDefaults.standard.data(forKey: defaultsKey(area, key)),
+		      let wrapped = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+		else { return nil }
+		return wrapped["v"]
+	}
+
+	private func write(_ area: String, _ key: String, _ value: Any) {
+		guard let data = try? JSONSerialization.data(withJSONObject: ["v": value]) else { return }
+		UserDefaults.standard.set(data, forKey: defaultsKey(area, key))
+	}
+
+	private func allKeys(_ area: String) -> [String] {
+		let prefix = "se.\(area)."
+		return UserDefaults.standard.dictionaryRepresentation().keys
+			.filter { $0.hasPrefix(prefix) }
+			.map { String($0.dropFirst(prefix.count)) }
+	}
+
+	func userContentController(_ ucc: WKUserContentController,
+	                           didReceive message: WKScriptMessage,
+	                           replyHandler: @escaping (Any?, String?) -> Void) {
+		guard let body = message.body as? [String: Any], let name = body["name"] as? String else {
+			replyHandler(nil, "malformed message"); return
+		}
+		let payload = body["payload"] as? [String: Any] ?? [:]
+		let area = payload["area"] as? String ?? "sync"
+
+		switch name {
+		case "storage.get":
+			var out: [String: Any] = [:]
+			let keys = (payload["keys"] as? [String]) ?? allKeys(area)
+			for k in keys { if let v = read(area, k) { out[k] = v } }
+			replyHandler(out, nil)
+
+		case "storage.set":
+			if let items = payload["items"] as? [String: Any] {
+				for (k, v) in items { write(area, k, v) }
+			}
+			replyHandler(nil, nil)
+
+		case "storage.remove":
+			for k in (payload["keys"] as? [String] ?? []) {
+				UserDefaults.standard.removeObject(forKey: defaultsKey(area, k))
+			}
+			replyHandler(nil, nil)
+
+		case "storage.clear":
+			for k in allKeys(area) { UserDefaults.standard.removeObject(forKey: defaultsKey(area, k)) }
+			replyHandler(nil, nil)
+
+		case "fetch":
+			guard let urlString = payload["url"] as? String, let url = URL(string: urlString) else {
+				replyHandler(nil, "bad url"); return
+			}
+			var request = URLRequest(url: url)
+			request.setValue("application/json", forHTTPHeaderField: "accept")
+			switch payload["type"] as? String {
+			case "mal":
+				request.setValue("75ee4314348f04a8eebde73db852b136", forHTTPHeaderField: "X-MAL-CLIENT-ID")
+			case "tmdb":
+				request.setValue("Bearer " + Self.tmdbToken, forHTTPHeaderField: "Authorization")
+			default:
+				break
+			}
+			URLSession.shared.dataTask(with: request) { data, _, error in
+				if let error = error { replyHandler(nil, error.localizedDescription); return }
+				guard let data = data,
+				      let json = try? JSONSerialization.jsonObject(with: data) else {
+					replyHandler(nil, "unparseable response"); return
+				}
+				replyHandler(json, nil)
+			}.resume()
+
+		default:
+			replyHandler(nil, "unknown message \(name)")
+		}
+	}
+
+	// Same public read-only token the extension ships with.
+	private static let tmdbToken = "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI5OWQyMWUxMmYzNjU1MjM4NzdhNTAwODVhMmVjYThiZiIsInN1YiI6IjY1M2E3Mjg3MjgxMWExMDBlYTA4NjI5OCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.x_EaVXQkg1_plk0NVSBnoNUl4QlGytdeO613nXIsP3w"
 }
 
 let app = NSApplication.shared
