@@ -32,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	let ucc = WKUserContentController()
 	let world = WKContentWorld.world(name: "streaming-enhanced")
 	var injectedSite: String?
+	var wasFullscreen = false
 
 	// Which flattened bundle to inject for a given host.
 	private static let siteForHost: [(match: String, site: String)] = [
@@ -157,6 +158,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		"""
 		hud.sizeToFit()
 		hud.isHidden = !hudVisible
+		if full != wasFullscreen {
+			wasFullscreen = full
+			logLine("window \(Int(window.frame.width))x\(Int(window.frame.height)) " +
+			        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
+			        "safeAreaTop \(insets.top) fullscreen \(full) usingNotchBand \(coversNotch)")
+		}
 	}
 
 	// MARK: - Menu
@@ -182,9 +189,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		fs.keyEquivalentModifierMask = [.control, .command]
 		viewMenu.addItem(withTitle: "Toggle Measurements", action: #selector(toggleHUD), keyEquivalent: "d")
 		viewMenu.addItem(.separator())
-		let fit = viewMenu.addItem(withTitle: "Full Screen Video  (⌃⇧F)", action: #selector(fillWindowFit), keyEquivalent: "F")
+		let fit = viewMenu.addItem(withTitle: "Cinema Mode  (⌃⇧F)", action: #selector(fillWindowFit), keyEquivalent: "F")
 		fit.keyEquivalentModifierMask = [.command, .shift]
-		let crop = viewMenu.addItem(withTitle: "Full Screen Video, Cropped  (⌃⇧G)", action: #selector(fillWindowCrop), keyEquivalent: "G")
+		let crop = viewMenu.addItem(withTitle: "Cinema Mode, Cropped  (⌃⇧G)", action: #selector(fillWindowCrop), keyEquivalent: "G")
 		crop.keyEquivalentModifierMask = [.command, .shift]
 		viewItem.submenu = viewMenu
 		main.addItem(viewItem)
@@ -206,7 +213,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	// evaluateJavaScript does not carry one, so Ctrl+Shift+F / Ctrl+Shift+G
 	// (handled by a keydown listener in the page) is the path that reliably works.
 	private func videoFullscreen(objectFit: String) {
-		let js = "globalThis.__seVideoFullscreen ? globalThis.__seVideoFullscreen('\(objectFit)') : 'shim not loaded'"
+		let js = "globalThis.__seCinema ? globalThis.__seCinema('\(objectFit)') : 'shim not loaded'"
 		webView.evaluateJavaScript(js, in: nil, in: world) { result in
 			switch result {
 			case .success(let value): logLine("menu fullscreen(\(objectFit)) -> \(value)")
@@ -367,6 +374,16 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
 				}
 				replyHandler(json, nil)
 			}.resume()
+
+		case "windowFullscreen":
+			let on = payload["on"] as? Bool ?? true
+			DispatchQueue.main.async {
+				if let w = (NSApp.delegate as? AppDelegate)?.window {
+					let isFull = w.styleMask.contains(.fullScreen)
+					if on != isFull { w.toggleFullScreen(nil) }
+				}
+				replyHandler(nil, nil)
+			}
 
 		case "log":
 			logLine("[page] " + (payload["msg"] as? String ?? ""))

@@ -109,6 +109,64 @@
 		}
 	};
 
+	// Cinema mode: fill OUR window rather than going through element fullscreen.
+	// WebKit's fullscreen window applies the display safe area no matter what our
+	// Info.plist says, so it can never use the notch band. Our own window can.
+	//
+	// The earlier attempt put the video in a corner because an ancestor with
+	// transform/filter/perspective/contain becomes the containing block for a
+	// position:fixed descendant. Those are cleared on the way up first.
+	const CONTAINING_BLOCK_PROPS = ["transform", "perspective", "filter", "backdrop-filter", "will-change", "contain"];
+	let cinemaState = null;
+
+	function enterCinema(fit) {
+		const v = document.querySelector("video");
+		if (!v) { globalThis.__seLog("cinema: no video element"); return "no video"; }
+
+		const touched = [];
+		for (let el = v.parentElement; el && el !== document.documentElement; el = el.parentElement) {
+			const cs = getComputedStyle(el);
+			const needs = CONTAINING_BLOCK_PROPS.some(function (prop) {
+				const value = cs.getPropertyValue(prop);
+				return value && value !== "none" && value !== "auto" && value !== "normal";
+			});
+			if (!needs) continue;
+			touched.push([el, el.getAttribute("style")]);
+			for (const prop of CONTAINING_BLOCK_PROPS) el.style.setProperty(prop, "none", "important");
+		}
+
+		const style = document.createElement("style");
+		style.id = "__se_cinema__";
+		style.textContent =
+			"video{position:fixed!important;inset:0!important;width:100vw!important;" +
+			"height:100vh!important;max-width:none!important;max-height:none!important;" +
+			"z-index:2147483647!important;background:#000!important;object-fit:" + fit + "!important}" +
+			"html,body{overflow:hidden!important;background:#000!important}";
+		document.documentElement.appendChild(style);
+
+		cinemaState = { touched: touched, style: style };
+		call("windowFullscreen", { on: true });
+		globalThis.__seLog("cinema: on, cleared " + touched.length + " containing-block ancestors, fit " + fit);
+		return "on";
+	}
+
+	function exitCinema() {
+		if (!cinemaState) return "already off";
+		cinemaState.style.remove();
+		for (const pair of cinemaState.touched) {
+			if (pair[1] === null) pair[0].removeAttribute("style");
+			else pair[0].setAttribute("style", pair[1]);
+		}
+		cinemaState = null;
+		call("windowFullscreen", { on: false });
+		globalThis.__seLog("cinema: off");
+		return "off";
+	}
+
+	globalThis.__seCinema = function (fit) {
+		return cinemaState ? exitCinema() : enterCinema(fit);
+	};
+
 	// Capture phase, because these players stop propagation on keydown.
 	globalThis.addEventListener("keydown", function (e) {
 		if (!e.ctrlKey || !e.shiftKey) return;
@@ -116,7 +174,7 @@
 		if (k !== "f" && k !== "g") return;
 		e.preventDefault();
 		e.stopPropagation();
-		globalThis.__seVideoFullscreen(k === "g" ? "cover" : "contain");
+		globalThis.__seCinema(k === "g" ? "cover" : "contain");
 	}, true);
 
 	globalThis.__seLog("shim installed on " + location.hostname + " (bridge " + (bridge ? "present" : "MISSING") + ")");
