@@ -1,5 +1,6 @@
 import Cocoa
 import WebKit
+import ObjectiveC
 
 // AppKit clamps a titled window's frame so its title bar cannot slide under the
 // menu bar - measured as setFrame(1470x956) coming back as 1470x923, exactly the
@@ -114,6 +115,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		webView.uiDelegate = self
 		webView.autoresizingMask = [.width, .height]
 		webView.setValue(false, forKey: "drawsBackground")
+
+		// The page lays out 33pt shorter than the view while reporting
+		// env(safe-area-inset-top) as 0 - content inset from the top, invisible to
+		// the page. That is macOS WKWebView's automatic content-inset adjustment,
+		// which exists to clear window chrome. Called through its implementation
+		// pointer because it is SPI with no KVC-reachable setter; guarded so a
+		// missing method is a no-op rather than a crash.
+		typealias SetBoolIMP = @convention(c) (AnyObject, Selector, ObjCBool) -> Void
+		for name in ["_setAutomaticallyAdjustsContentInsets:", "setAutomaticallyAdjustsContentInsets:"] {
+			let sel = NSSelectorFromString(name)
+			guard let method = class_getInstanceMethod(type(of: webView!), sel) else { continue }
+			let fn = unsafeBitCast(method_getImplementation(method), to: SetBoolIMP.self)
+			fn(webView, sel, false)
+			logLine("disabled \(name)")
+			break
+		}
 
 		window = KioskWindow(
 			contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
@@ -308,6 +325,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		webView.needsLayout = true
 		webView.layoutSubtreeIfNeeded()
 		let f = window.frame
+		logLine("  screen.safeAreaInsets.top \(screen.safeAreaInsets.top) " +
+		        "auxTopLeft \(Int(screen.auxiliaryTopLeftArea?.width ?? 0))x\(Int(screen.auxiliaryTopLeftArea?.height ?? 0))")
 		logLine("kiosk \(on): window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
 		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
 		        "webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
