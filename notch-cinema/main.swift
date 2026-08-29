@@ -9,6 +9,9 @@ final class KioskWindow: NSWindow {
 	override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
 		unconstrained ? frameRect : super.constrainFrameRect(frameRect, to: screen)
 	}
+	// Borderless windows are not key by default, and kiosk mode goes borderless.
+	override var canBecomeKey: Bool { true }
+	override var canBecomeMain: Bool { true }
 }
 
 // With the window finally covering the display, WebKit still laid the page out
@@ -54,6 +57,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	var injectedSite: String?
 	var wasFullscreen = false
 	var savedFrame: NSRect?
+	var savedStyle: NSWindow.StyleMask?
 	var kiosk = false
 
 	// Which flattened bundle to inject for a given host.
@@ -278,38 +282,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		if on {
 			if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
 			savedFrame = window.frame
+			savedStyle = window.styleMask
 			NSApp.presentationOptions = [.hideMenuBar, .hideDock]
 			window.unconstrained = true
 			webView.fullBleed = true
-			window.styleMask.insert(.fullSizeContentView)
-			window.titlebarAppearsTransparent = true
-			window.titleVisibility = .hidden
-			for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-				window.standardWindowButton(button)?.isHidden = true
-			}
+			// A titled window sizes its contentView to the content layout rect, which
+			// is where the last 33pt went. Borderless gives the contentView the frame.
+			window.styleMask = [.borderless]
 			window.setFrame(screen.frame, display: true)
 			window.makeKeyAndOrderFront(nil)
 		} else {
 			window.unconstrained = false
 			webView.fullBleed = false
 			NSApp.presentationOptions = []
-			window.titlebarAppearsTransparent = false
-			window.titleVisibility = .visible
-			for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
-				window.standardWindowButton(button)?.isHidden = false
-			}
+			if let style = savedStyle { window.styleMask = style }
 			if let f = savedFrame { window.setFrame(f, display: true) }
+			window.makeKeyAndOrderFront(nil)
 		}
 		let f = window.frame
 		logLine("kiosk \(on): asked \(Int(screen.frame.width))x\(Int(screen.frame.height)) got " +
 		        "window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
 		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
 		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
-		webView.frame = window.contentView?.bounds ?? webView.frame
+		// webView IS the contentView, so size it from the window, not from itself.
+		webView.frame = NSRect(origin: .zero, size: window.frame.size)
 		webView.needsLayout = true
 		webView.layoutSubtreeIfNeeded()
 		logLine("  webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
-		        "safeAreaTop \(webView.safeAreaInsets.top) fullBleed \(webView.fullBleed)")
+		        "safeAreaTop \(webView.safeAreaInsets.top) fullBleed \(webView.fullBleed) " +
+		        "contentLayoutRect \(Int(window.contentLayoutRect.width))x\(Int(window.contentLayoutRect.height))")
 		updateHUD()
 	}
 
