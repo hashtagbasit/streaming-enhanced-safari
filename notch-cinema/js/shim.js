@@ -83,6 +83,44 @@
 	globalThis.browser = browserShim;
 	globalThis.chrome = browserShim;
 
+	globalThis.__seLog = function (msg) {
+		try { call("log", { msg: String(msg) }); } catch (e) {}
+		console.log("[notch-cinema]", msg);
+	};
+
+	// position:fixed cannot be trusted here - these players have transformed
+	// ancestors, which makes a fixed element resolve against that ancestor
+	// rather than the viewport (the video lands in a corner). Use the real
+	// Fullscreen API instead, which needs a genuine user gesture, hence the
+	// keydown path rather than a menu item.
+	globalThis.__seVideoFullscreen = function (fit) {
+		const v = document.querySelector("video");
+		if (!v) { globalThis.__seLog("fullscreen: no video element found"); return "no video"; }
+		if (fit) v.style.setProperty("object-fit", fit, "important");
+		const req = v.requestFullscreen || v.webkitRequestFullscreen;
+		if (!req) { globalThis.__seLog("fullscreen: API unavailable on video"); return "unsupported"; }
+		try {
+			req.call(v);
+			globalThis.__seLog("fullscreen: requested (object-fit " + fit + ")");
+			return "requested";
+		} catch (e) {
+			globalThis.__seLog("fullscreen: threw " + e);
+			return String(e);
+		}
+	};
+
+	// Capture phase, because these players stop propagation on keydown.
+	globalThis.addEventListener("keydown", function (e) {
+		if (!e.ctrlKey || !e.shiftKey) return;
+		const k = (e.key || "").toLowerCase();
+		if (k !== "f" && k !== "g") return;
+		e.preventDefault();
+		e.stopPropagation();
+		globalThis.__seVideoFullscreen(k === "g" ? "cover" : "contain");
+	}, true);
+
+	globalThis.__seLog("shim installed on " + location.hostname + " (bridge " + (bridge ? "present" : "MISSING") + ")");
+
 	// Replaces webext-bridge's port messaging. Only "fetch" needs to do real
 	// work - the ratings lookups, which go through native to sidestep CORS.
 	globalThis.__seSendMessage = async function (messageID, data) {

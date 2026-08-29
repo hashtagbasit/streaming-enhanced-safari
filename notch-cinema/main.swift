@@ -1,6 +1,24 @@
 import Cocoa
 import WebKit
 
+// NSLog from an ad-hoc signed app doesn't reliably reach the unified log, so
+// diagnostics go to a file we can actually read back.
+let logURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
+	.appendingPathComponent("Logs/NotchCinema.log")
+
+func logLine(_ message: String) {
+	NSLog("%@", message)
+	let stamp = ISO8601DateFormatter().string(from: Date())
+	guard let data = "\(stamp)  \(message)\n".data(using: .utf8) else { return }
+	try? FileManager.default.createDirectory(at: logURL.deletingLastPathComponent(),
+	                                         withIntermediateDirectories: true)
+	if let handle = try? FileHandle(forWritingTo: logURL) {
+		handle.seekToEndOfFile(); handle.write(data); try? handle.close()
+	} else {
+		try? data.write(to: logURL)
+	}
+}
+
 // A minimal WKWebView host whose Info.plist sets NSPrefersDisplaySafeAreaLayoutGuide
 // to false, so in fullscreen the content extends into the band beside the notch
 // instead of being inset below it - which is the thing Safari will not do.
@@ -11,6 +29,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	var hud: NSTextField!
 	var hudVisible = true
 	let bridge = Bridge()
+	let ucc = WKUserContentController()
 	let world = WKContentWorld.world(name: "streaming-enhanced")
 	var injectedSite: String?
 
@@ -47,14 +66,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			let setter = "set" + key.prefix(1).uppercased() + key.dropFirst() + ":"
 			if prefs.responds(to: NSSelectorFromString(setter)) {
 				prefs.setValue(true, forKey: key)
-				NSLog("enabled WKPreferences.%@", key)
+				logLine("enabled WKPreferences.\(key)")
 			}
 		}
 
 		// An isolated content world keeps the extension's globals away from the
 		// site's own, the way a real content script is isolated, and sidesteps the
 		// page CSP that would otherwise block what we inject.
-		config.userContentController.addScriptMessageHandler(bridge, contentWorld: world, name: "se")
+		// WKWebView copies its configuration, so hold the controller explicitly
+		// rather than reaching through config vs webView.configuration and risking
+		// the handler and the user scripts landing on two different objects.
+		config.userContentController = ucc
+		ucc.addScriptMessageHandler(bridge, contentWorld: world, name: "se")
 
 		webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: config)
 		webView.customUserAgent = safariUA
@@ -87,6 +110,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			nc.addObserver(self, selector: #selector(updateHUD), name: name, object: window)
 		}
 
+		logLine("--- launched, log at \(logURL.path) ---")
+		installUserScript(forHost: startURL.host ?? "")
 		webView.load(URLRequest(url: startURL))
 		NSApp.activate(ignoringOtherApps: true)
 		updateHUD()
@@ -157,9 +182,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		fs.keyEquivalentModifierMask = [.control, .command]
 		viewMenu.addItem(withTitle: "Toggle Measurements", action: #selector(toggleHUD), keyEquivalent: "d")
 		viewMenu.addItem(.separator())
-		let fit = viewMenu.addItem(withTitle: "Fill Window with Video", action: #selector(fillWindowFit), keyEquivalent: "F")
+		let fit = viewMenu.addItem(withTitle: "Full Screen Video  (⌃⇧F)", action: #selector(fillWindowFit), keyEquivalent: "F")
 		fit.keyEquivalentModifierMask = [.command, .shift]
-		let crop = viewMenu.addItem(withTitle: "Fill Window with Video (Crop)", action: #selector(fillWindowCrop), keyEquivalent: "G")
+		let crop = viewMenu.addItem(withTitle: "Full Screen Video, Cropped  (⌃⇧G)", action: #selector(fillWindowCrop), keyEquivalent: "G")
 		crop.keyEquivalentModifierMask = [.command, .shift]
 		viewItem.submenu = viewMenu
 		main.addItem(viewItem)
@@ -177,36 +202,21 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		NSApp.mainMenu = main
 	}
 
-	// Independent of the page's own fullscreen: pins the video to our window,
-	// which already covers the notch band. Works even where a site's fullscreen
-	// control is broken or its player refuses to cooperate.
-	private func fillWindow(objectFit: String) {
-		let js = """
-		(function () {
-		  const id = '__notch_fill__';
-		  const existing = document.getElementById(id);
-		  if (existing) { existing.remove(); return 'off'; }
-		  if (!document.querySelector('video')) return 'no video found';
-		  const s = document.createElement('style');
-		  s.id = id;
-		  s.textContent = `
-		    video { position: fixed !important; inset: 0 !important;
-		            width: 100vw !important; height: 100vh !important;
-		            z-index: 2147483647 !important; background: #000 !important;
-		            object-fit: \(objectFit) !important; }
-		    html, body { overflow: hidden !important; background: #000 !important; }
-		  `;
-		  document.documentElement.appendChild(s);
-		  return 'on';
-		})()
-		"""
-		webView.evaluateJavaScript(js) { result, error in
-			NSLog("fillWindow(%@) -> %@", objectFit, String(describing: error ?? result as Any))
+	// Best-effort from the menu: requestFullscreen wants a real user gesture and
+	// evaluateJavaScript does not carry one, so Ctrl+Shift+F / Ctrl+Shift+G
+	// (handled by a keydown listener in the page) is the path that reliably works.
+	private func videoFullscreen(objectFit: String) {
+		let js = "globalThis.__seVideoFullscreen ? globalThis.__seVideoFullscreen('\(objectFit)') : 'shim not loaded'"
+		webView.evaluateJavaScript(js, in: nil, in: world) { result in
+			switch result {
+			case .success(let value): logLine("menu fullscreen(\(objectFit)) -> \(value)")
+			case .failure(let error): logLine("menu fullscreen(\(objectFit)) failed: \(error)")
+			}
 		}
 	}
 
-	@objc func fillWindowFit() { fillWindow(objectFit: "contain") }
-	@objc func fillWindowCrop() { fillWindow(objectFit: "cover") }
+	@objc func fillWindowFit() { videoFullscreen(objectFit: "contain") }
+	@objc func fillWindowCrop() { videoFullscreen(objectFit: "cover") }
 
 	@objc func toggleHUD() { hudVisible.toggle(); updateHUD() }
 	@objc func reload() { webView.reload() }
@@ -239,18 +249,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		guard wanted != injectedSite else { return }
 		injectedSite = wanted
 
-		let ucc = webView.configuration.userContentController
 		ucc.removeAllUserScripts()
 		guard let wanted = wanted else { return }
 		guard let url = Bundle.main.url(forResource: wanted + ".userscript", withExtension: "js"),
 		      let source = try? String(contentsOf: url, encoding: .utf8) else {
-			NSLog("no bundled userscript for %@", wanted); return
+			logLine("no bundled userscript for \(wanted)"); return
 		}
 		ucc.addUserScript(WKUserScript(source: source,
 		                               injectionTime: .atDocumentStart,
 		                               forMainFrameOnly: true,
 		                               in: world))
-		NSLog("injecting %@ userscript (%d bytes)", wanted, source.count)
+		logLine("injecting \(wanted) userscript (\(source.count) bytes) for host \(host)")
 	}
 
 	func webView(_ w: WKWebView,
@@ -270,7 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	}
 
 	func webView(_ w: WKWebView, didFail n: WKNavigation!, withError e: Error) {
-		NSLog("navigation failed: %@", e.localizedDescription)
+		logLine("navigation failed: \(e.localizedDescription)")
 	}
 }
 
@@ -358,6 +367,10 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
 				}
 				replyHandler(json, nil)
 			}.resume()
+
+		case "log":
+			logLine("[page] " + (payload["msg"] as? String ?? ""))
+			replyHandler(nil, nil)
 
 		default:
 			replyHandler(nil, "unknown message \(name)")

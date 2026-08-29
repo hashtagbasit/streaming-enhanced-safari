@@ -135,6 +135,7 @@ def emit(src_dir, site, shim_path):
             parts.append("return {};")
         parts.append("})();")
 
+    parts.append('globalThis.__seLog && globalThis.__seLog("site bundle %s finished loading");' % site)
     parts.append("})();")
     return "\n".join(parts)
 
