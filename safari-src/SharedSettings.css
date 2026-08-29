@@ -1,0 +1,45 @@
+/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+@layer properties {
+@supports (((-webkit-hyphens: none)) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color: rgb(from red r g b)))) {
+[data-v-f364d43c],[data-v-f364d43c]:before,[data-v-f364d43c]:after,[data-v-f364d43c]::backdrop {
+      --tw-border-style: solid;
+}
+}
+}
+table[data-v-f364d43c] {
+  border-style: var(--tw-border-style);
+  --tw-border-style: solid;
+  border-style: solid;
+  border-width: 1px;
+  border-color: var(--color-primary-content);
+}
+.featureTable tr[data-v-f364d43c] :nth-of-type(2) {
+  border-right-style: var(--tw-border-style);
+  border-right-width: 1px;
+  border-color: var(--color-primary-content);
+}
+.featureTable tr td:nth-of-type(2) label[data-v-f364d43c] {
+  margin-right: 20px;
+}
+.featureTable[data-v-f364d43c] {
+  border-collapse: collapse;
+}
+th[data-v-f364d43c], td[data-v-f364d43c] {
+  text-align: center;
+}
+p[data-v-f364d43c] {
+  margin: 0;
+}
+@media only screen and (max-width: 800px), only screen and (max-height: 600px) {
+.featureTable tr td:nth-of-type(2) label[data-v-f364d43c] {
+    margin-right: unset;
+}
+.other[data-v-f364d43c] {
+    display: none;
+}
+}
+@property --tw-border-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}

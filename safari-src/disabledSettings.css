@@ -1,0 +1,173 @@
+/*! tailwindcss v4.3.3 | MIT License | https://tailwindcss.com */
+@layer properties {
+@supports (((-webkit-hyphens: none)) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color: rgb(from red r g b)))) {
+[data-v-5cfe36e6],[data-v-5cfe36e6]:before,[data-v-5cfe36e6]:after,[data-v-5cfe36e6]::backdrop {
+      --tw-border-style: solid;
+      --tw-gradient-position: initial;
+      --tw-gradient-from: #0000;
+      --tw-gradient-via: #0000;
+      --tw-gradient-to: #0000;
+      --tw-gradient-stops: initial;
+      --tw-gradient-via-stops: initial;
+      --tw-gradient-from-position: 0%;
+      --tw-gradient-via-position: 50%;
+      --tw-gradient-to-position: 100%;
+      --tw-font-weight: initial;
+}
+}
+}
+.overview-header[data-v-5cfe36e6] {
+  margin-bottom: calc(var(--spacing, .25rem) * 4);
+}
+.category-grid[data-v-5cfe36e6] {
+  gap: calc(var(--spacing, .25rem) * 4);
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  display: grid;
+}
+.category-card[data-v-5cfe36e6] {
+  border-radius: var(--radius-xl, .75rem);
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+  border-color: #cad5e299;
+}
+@supports (color: color-mix(in lab, red, red)) {
+.category-card[data-v-5cfe36e6] {
+    border-color: color-mix(in oklab, var(--color-slate-300, oklch(86.9% .022 252.894)) 60%, transparent);
+}
+}
+.category-card[data-v-5cfe36e6] {
+  --tw-gradient-position: to bottom;
+}
+@supports (background-image: linear-gradient(in lab, red, red)) {
+.category-card[data-v-5cfe36e6] {
+    --tw-gradient-position: to bottom in oklab;
+}
+}
+.category-card[data-v-5cfe36e6] {
+  background-image: linear-gradient(var(--tw-gradient-stops));
+  --tw-gradient-from: #0f172b0d;
+}
+@supports (color: color-mix(in lab, red, red)) {
+.category-card[data-v-5cfe36e6] {
+    --tw-gradient-from: color-mix(in oklab, var(--color-slate-900, oklch(20.8% .042 265.755)) 5%, transparent);
+}
+}
+.category-card[data-v-5cfe36e6] {
+  --tw-gradient-to: #0f172b05;
+}
+@supports (color: color-mix(in lab, red, red)) {
+.category-card[data-v-5cfe36e6] {
+    --tw-gradient-to: color-mix(in oklab, var(--color-slate-900, oklch(20.8% .042 265.755)) 2%, transparent);
+}
+}
+.category-card[data-v-5cfe36e6] {
+  --tw-gradient-stops: var(--tw-gradient-via-stops, var(--tw-gradient-position), var(--tw-gradient-from) var(--tw-gradient-from-position), var(--tw-gradient-to) var(--tw-gradient-to-position));
+  padding-inline: calc(var(--spacing, .25rem) * 4);
+  padding-block: calc(var(--spacing, .25rem) * 3);
+}
+.category-card-header[data-v-5cfe36e6] {
+  margin-bottom: calc(var(--spacing, .25rem) * 2);
+  justify-content: space-between;
+  align-items: center;
+  gap: calc(var(--spacing, .25rem) * 3);
+  display: flex;
+}
+.category-card-header h2[data-v-5cfe36e6] {
+  font-size: var(--text-base, 1rem);
+  line-height: var(--tw-leading, var(--text-base--line-height, calc(1.5 / 1)));
+  --tw-font-weight: var(--font-weight-bold, 700);
+  font-weight: var(--font-weight-bold, 700);
+  margin: 0;
+}
+.count-badge[data-v-5cfe36e6] {
+  min-width: calc(var(--spacing, .25rem) * 7);
+  border-style: var(--tw-border-style);
+  border-width: 1px;
+  border-color: #ffa3a3b3;
+  border-radius: 3.40282e38px;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+}
+@supports (color: color-mix(in lab, red, red)) {
+.count-badge[data-v-5cfe36e6] {
+    border-color: color-mix(in oklab, var(--color-red-300, oklch(80.8% .114 19.571)) 70%, transparent);
+}
+}
+.count-badge[data-v-5cfe36e6] {
+  background-color: var(--color-red-100, oklch(93.6% .032 17.717));
+  padding-inline: calc(var(--spacing, .25rem) * 2);
+  padding-block: calc(var(--spacing, .25rem) * .5);
+  font-size: var(--text-xs, .75rem);
+  line-height: var(--tw-leading, var(--text-xs--line-height, calc(1 / .75)));
+  --tw-font-weight: var(--font-weight-bold, 700);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-red-950, oklch(25.8% .092 26.042));
+}
+.setting-row[data-v-5cfe36e6] {
+  border-top-style: var(--tw-border-style);
+  border-color: #cad5e266;
+  border-top-width: 1px;
+}
+@supports (color: color-mix(in lab, red, red)) {
+.setting-row[data-v-5cfe36e6] {
+    border-color: color-mix(in oklab, var(--color-slate-300, oklch(86.9% .022 252.894)) 40%, transparent);
+}
+}
+.setting-row[data-v-5cfe36e6] {
+  padding-block: calc(var(--spacing, .25rem) * 2.5);
+}
+.setting-description[data-v-5cfe36e6] {
+  margin-top: var(--spacing, .25rem);
+}
+@property --tw-border-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
+@property --tw-gradient-position {
+  syntax: "*";
+  inherits: false
+}
+@property --tw-gradient-from {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-via {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-to {
+  syntax: "<color>";
+  inherits: false;
+  initial-value: #0000;
+}
+@property --tw-gradient-stops {
+  syntax: "*";
+  inherits: false
+}
+@property --tw-gradient-via-stops {
+  syntax: "*";
+  inherits: false
+}
+@property --tw-gradient-from-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 0%;
+}
+@property --tw-gradient-via-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 50%;
+}
+@property --tw-gradient-to-position {
+  syntax: "<length-percentage>";
+  inherits: false;
+  initial-value: 100%;
+}
+@property --tw-font-weight {
+  syntax: "*";
+  inherits: false
+}

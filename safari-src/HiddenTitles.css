@@ -1,0 +1,74 @@
+
+.grid-container[data-v-74b11e28] {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+	gap: 12px;
+	max-height: 40rem;
+	overflow-y: auto;
+}
+.block-card[data-v-74b11e28] {
+	position: relative;
+	display: flex;
+	flex-direction: column;
+	border: 1px solid #ccc;
+	border-radius: 8px;
+	padding: 6px;
+	overflow: hidden;
+}
+.poster[data-v-74b11e28] {
+	width: 100%;
+	aspect-ratio: 2 / 3;
+	object-fit: cover;
+	border-radius: 4px;
+	background: #333;
+}
+.poster-placeholder[data-v-74b11e28] {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 2rem;
+	color: #999;
+	background: #222;
+}
+.card-title[data-v-74b11e28] {
+	margin: 4px 0 0 0;
+	font-size: 0.85rem;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+.platform-badge[data-v-74b11e28] {
+	font-size: 0.7rem;
+	opacity: 0.7;
+}
+.select-checkbox[data-v-74b11e28] {
+	position: absolute;
+	top: 6px;
+	left: 6px;
+	z-index: 2;
+}
+.unblock-btn[data-v-74b11e28] {
+	position: absolute;
+	top: 4px;
+	right: 4px;
+	z-index: 2;
+	background: rgba(0, 0, 0, 0.6);
+	color: white;
+	border: none;
+	border-radius: 50%;
+	width: 22px;
+	height: 22px;
+	cursor: pointer;
+}
+.thumb[data-v-74b11e28] {
+	width: 40px;
+	height: 60px;
+	object-fit: cover;
+	border-radius: 4px;
+	background: #333;
+}
+.detail-table th[data-v-74b11e28],
+.detail-table td[data-v-74b11e28] {
+	text-align: left;
+	padding: 4px 8px;
+}

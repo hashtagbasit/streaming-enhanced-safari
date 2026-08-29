@@ -1,0 +1,154 @@
+{
+  "manifest_version": 3,
+  "name": "Streaming enhanced Netflix Disney Prime Video",
+  "description": "Skip ads, intros, credits and add adjust speed, etc. on Netflix, Prime video, Disney+, Crunchyroll and HBO max.",
+  "version": "1.1.105",
+  "author": "Marvin Krebber",
+  "homepage_url": "https://github.com/Dreamlinerm/Netflix-Prime-Auto-Skip",
+
+  "background": {
+    "service_worker": "service-worker-loader.js",
+    "type": "module"
+  },
+
+  "content_scripts": [
+    {
+      "js": ["crunchyroll.ts-loader.js"],
+      "matches": ["*://*.crunchyroll.com/*"]
+    },
+    {
+      "js": ["amazon.ts-loader.js"],
+      "matches": [
+        "*://*.primevideo.com/*",
+        "*://*.amazon.com/*",
+        "*://*.amazon.co.jp/*",
+        "*://*.amazon.de/*",
+        "*://*.amazon.co.uk/*"
+      ]
+    },
+    {
+      "js": ["netflix.ts-loader.js"],
+      "matches": [
+        "*://*.netflix.com/*",
+        "*://*.netflix.ca/*",
+        "*://*.netflix.com.au/*"
+      ]
+    },
+    {
+      "js": ["disney.ts-loader.js"],
+      "matches": [
+        "*://*.disneyplus.com/*",
+        "*://*.hotstar.com/*",
+        "*://*.starplus.com/*",
+        "*://*.jiostar.com/*",
+        "*://*.jiocinema.com/*"
+      ]
+    },
+    {
+      "js": ["max.ts-loader.js"],
+      "matches": ["*://*.max.com/*", "*://*.hbomax.com/*"]
+    },
+    {
+      "js": ["paramount.ts-loader.js"],
+      "matches": ["*://*.paramountplus.com/*"]
+    }
+  ],
+
+  "permissions": ["storage"],
+
+  "optional_permissions": ["tabs"],
+
+  "host_permissions": [
+    "*://*.crunchyroll.com/*",
+    "*://*.primevideo.com/*",
+    "*://*.amazon.com/*",
+    "*://*.amazon.co.jp/*",
+    "*://*.amazon.de/*",
+    "*://*.amazon.co.uk/*",
+    "*://*.netflix.com/*",
+    "*://*.netflix.ca/*",
+    "*://*.netflix.com.au/*",
+    "*://*.disneyplus.com/*",
+    "*://*.hotstar.com/*",
+    "*://*.starplus.com/*",
+    "*://*.jiostar.com/*",
+    "*://*.jiocinema.com/*",
+    "*://*.max.com/*",
+    "*://*.hbomax.com/*",
+    "*://*.paramountplus.com/*",
+    "https://api.myanimelist.net/*"
+  ],
+
+  "action": {
+    "default_popup": "src/ui/action-popup/index.html",
+    "default_title": "Streaming enhanced",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "19": "icons/icon-19.png",
+      "32": "icons/icon-32.png",
+      "38": "icons/icon-38.png"
+    }
+  },
+
+  "options_ui": {
+    "page": "src/ui/options-page/index.html",
+    "open_in_tab": true
+  },
+
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "64": "icons/icon-64.png",
+    "96": "icons/icon-96.png",
+    "128": "icons/icon-128.png",
+    "256": "icons/icon-256.png",
+    "512": "icons/icon-512.png"
+  },
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "browser-polyfill.js",
+        "browser-polyfill2.js",
+        "runtime-core.esm-bundler.js",
+        "storeTypes.js",
+        "shared-functions.js",
+        "crunchyroll.ts.js",
+        "amazon.ts.js",
+        "netflix.ts.js",
+        "disney.ts.js",
+        "max.ts.js",
+        "paramount.ts.js"
+      ],
+      "matches": [
+        "*://*.crunchyroll.com/*",
+        "*://*.primevideo.com/*",
+        "*://*.amazon.com/*",
+        "*://*.amazon.co.jp/*",
+        "*://*.amazon.de/*",
+        "*://*.amazon.co.uk/*",
+        "*://*.netflix.com/*",
+        "*://*.netflix.ca/*",
+        "*://*.netflix.com.au/*",
+        "*://*.disneyplus.com/*",
+        "*://*.hotstar.com/*",
+        "*://*.starplus.com/*",
+        "*://*.jiostar.com/*",
+        "*://*.jiocinema.com/*",
+        "*://*.max.com/*",
+        "*://*.hbomax.com/*",
+        "*://*.paramountplus.com/*"
+      ]
+    }
+  ],
+
+  "browser_specific_settings": {
+    "safari": {
+      "strict_min_version": "16.4"
+    },
+    "gecko": {
+      "id": "NetflixPrime@Autoskip.io"
+    }
+  }
+}
