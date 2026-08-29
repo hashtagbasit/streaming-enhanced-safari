@@ -11,6 +11,16 @@ final class KioskWindow: NSWindow {
 	}
 }
 
+// With the window finally covering the display, WebKit still laid the page out
+// 33pt short - it insets web content by the view's safeAreaInsets. That is a
+// view-level property, so report none and the page gets the whole window.
+final class FullBleedWebView: WKWebView {
+	var fullBleed = false
+	override var safeAreaInsets: NSEdgeInsets {
+		fullBleed ? NSEdgeInsets(top: 0, left: 0, bottom: 0, right: 0) : super.safeAreaInsets
+	}
+}
+
 // NSLog from an ad-hoc signed app doesn't reliably reach the unified log, so
 // diagnostics go to a file we can actually read back.
 let logURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
@@ -35,7 +45,7 @@ func logLine(_ message: String) {
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
 
 	var window: KioskWindow!
-	var webView: WKWebView!
+	var webView: FullBleedWebView!
 	var hud: NSTextField!
 	var hudVisible = true
 	let bridge = Bridge()
@@ -92,7 +102,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		config.userContentController = ucc
 		ucc.addScriptMessageHandler(bridge, contentWorld: world, name: "se")
 
-		webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: config)
+		webView = FullBleedWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: config)
 		webView.customUserAgent = safariUA
 		webView.navigationDelegate = self
 		webView.uiDelegate = self
@@ -270,6 +280,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			savedFrame = window.frame
 			NSApp.presentationOptions = [.hideMenuBar, .hideDock]
 			window.unconstrained = true
+			webView.fullBleed = true
 			window.styleMask.insert(.fullSizeContentView)
 			window.titlebarAppearsTransparent = true
 			window.titleVisibility = .hidden
@@ -280,6 +291,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			window.makeKeyAndOrderFront(nil)
 		} else {
 			window.unconstrained = false
+			webView.fullBleed = false
 			NSApp.presentationOptions = []
 			window.titlebarAppearsTransparent = false
 			window.titleVisibility = .visible
@@ -293,6 +305,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		        "window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
 		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
 		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
+		webView.frame = window.contentView?.bounds ?? webView.frame
+		webView.needsLayout = true
+		webView.layoutSubtreeIfNeeded()
+		logLine("  webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
+		        "safeAreaTop \(webView.safeAreaInsets.top) fullBleed \(webView.fullBleed)")
 		updateHUD()
 	}
 
