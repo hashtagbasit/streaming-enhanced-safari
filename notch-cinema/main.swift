@@ -33,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	let world = WKContentWorld.world(name: "streaming-enhanced")
 	var injectedSite: String?
 	var wasFullscreen = false
+	var savedFrame: NSRect?
+	var kiosk = false
 
 	// Which flattened bundle to inject for a given host.
 	private static let siteForHost: [(match: String, site: String)] = [
@@ -244,6 +246,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		}
 	}
 
+	// MARK: - Kiosk fullscreen
+
+	// Measured: AppKit fullscreen gives 1470x923 on a 1470x956 display - inset by
+	// the 33pt notch band, and NSPrefersDisplaySafeAreaLayoutGuide did not change
+	// that. Sizing the window to the screen frame ourselves, with the menu bar
+	// hidden, is what actually covers the whole display.
+	func setKiosk(_ on: Bool) {
+		guard on != kiosk, let screen = window.screen else { return }
+		kiosk = on
+		if on {
+			if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+			savedFrame = window.frame
+			NSApp.presentationOptions = [.hideMenuBar, .hideDock]
+			window.styleMask.insert(.fullSizeContentView)
+			window.titlebarAppearsTransparent = true
+			window.titleVisibility = .hidden
+			for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+				window.standardWindowButton(button)?.isHidden = true
+			}
+			window.setFrame(screen.frame, display: true)
+			window.makeKeyAndOrderFront(nil)
+		} else {
+			NSApp.presentationOptions = []
+			window.titlebarAppearsTransparent = false
+			window.titleVisibility = .visible
+			for button in [NSWindow.ButtonType.closeButton, .miniaturizeButton, .zoomButton] {
+				window.standardWindowButton(button)?.isHidden = false
+			}
+			if let f = savedFrame { window.setFrame(f, display: true) }
+		}
+		let f = window.frame
+		logLine("kiosk \(on): window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
+		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
+		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
+		updateHUD()
+	}
+
 	// MARK: - Extension injection
 
 	private func site(forHost host: String) -> String? {
@@ -378,10 +417,7 @@ final class Bridge: NSObject, WKScriptMessageHandlerWithReply {
 		case "windowFullscreen":
 			let on = payload["on"] as? Bool ?? true
 			DispatchQueue.main.async {
-				if let w = (NSApp.delegate as? AppDelegate)?.window {
-					let isFull = w.styleMask.contains(.fullScreen)
-					if on != isFull { w.toggleFullScreen(nil) }
-				}
+				(NSApp.delegate as? AppDelegate)?.setKiosk(on)
 				replyHandler(nil, nil)
 			}
 
