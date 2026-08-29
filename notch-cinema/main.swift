@@ -5,6 +5,13 @@ import WebKit
 // menu bar - measured as setFrame(1470x956) coming back as 1470x923, exactly the
 // notch band. constrainFrameRect is where that happens, so kiosk mode opts out.
 final class KioskWindow: NSWindow {
+	// Only the frame constraint is defeated, and only while cinema mode is on.
+	// The style-mask swapping and presentationOptions churn that used to accompany
+	// this are gone - they were what upset the WindowServer.
+	var unconstrained = false
+	override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+		unconstrained ? frameRect : super.constrainFrameRect(frameRect, to: screen)
+	}
 	override var canBecomeKey: Bool { true }
 	override var canBecomeMain: Bool { true }
 }
@@ -122,6 +129,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		buildMenu()
 
 		let nc = NotificationCenter.default
+		nc.addObserver(self, selector: #selector(didEnterFullScreen),
+		               name: NSWindow.didEnterFullScreenNotification, object: window)
 		for name: NSNotification.Name in [
 			NSWindow.didEnterFullScreenNotification,
 			NSWindow.didExitFullScreenNotification,
@@ -270,9 +279,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	// for the clamp caused by the wrong Info.plist key, and they coincided with
 	// WindowServer hitches. With NSPrefersDisplaySafeAreaCompatibilityMode set
 	// correctly, none of it should be needed.
+	// AppKit reserves the notch band for a fullscreen window, and the correct
+	// Info.plist key does not change that - it governs resolution scaling. So take
+	// native fullscreen for the menu-bar handling, then grow the frame by the band
+	// with the constraint lifted. These two were never combined before: the
+	// full-frame window predated the key fix, and the key fix removed it.
+	@objc func didEnterFullScreen() {
+		guard kiosk, let screen = window.screen else { return }
+		window.unconstrained = true
+		webView.fullBleed = true
+		window.setFrame(screen.frame, display: true)
+		webView.frame = NSRect(origin: .zero, size: window.frame.size)
+		webView.needsLayout = true
+		webView.layoutSubtreeIfNeeded()
+		let f = window.frame
+		logLine("grew to \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
+		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
+		        "webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
+		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
+	}
+
 	func setKiosk(_ on: Bool) {
 		guard on != kiosk else { return }
 		kiosk = on
+		if !on { window.unconstrained = false; webView.fullBleed = false }
 		if on != window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
 		// Fullscreen animates; measure once it has settled.
 		DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
