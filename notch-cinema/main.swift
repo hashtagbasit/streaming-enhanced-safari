@@ -5,11 +5,6 @@ import WebKit
 // menu bar - measured as setFrame(1470x956) coming back as 1470x923, exactly the
 // notch band. constrainFrameRect is where that happens, so kiosk mode opts out.
 final class KioskWindow: NSWindow {
-	var unconstrained = false
-	override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
-		unconstrained ? frameRect : super.constrainFrameRect(frameRect, to: screen)
-	}
-	// Borderless windows are not key by default, and kiosk mode goes borderless.
 	override var canBecomeKey: Bool { true }
 	override var canBecomeMain: Bool { true }
 }
@@ -56,8 +51,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	let world = WKContentWorld.world(name: "streaming-enhanced")
 	var injectedSite: String?
 	var wasFullscreen = false
-	var savedFrame: NSRect?
-	var savedStyle: NSWindow.StyleMask?
 	var kiosk = false
 
 	// Which flattened bundle to inject for a given host.
@@ -270,48 +263,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		}
 	}
 
-	// MARK: - Kiosk fullscreen
+	// MARK: - Fullscreen
 
-	// Measured: AppKit fullscreen gives 1470x923 on a 1470x956 display - inset by
-	// the 33pt notch band, and NSPrefersDisplaySafeAreaLayoutGuide did not change
-	// that. Sizing the window to the screen frame ourselves, with the menu bar
-	// hidden, is what actually covers the whole display.
+	// Plain AppKit fullscreen. The borderless swap, presentation-option thrashing
+	// and constrainFrameRect override that used to live here were all compensating
+	// for the clamp caused by the wrong Info.plist key, and they coincided with
+	// WindowServer hitches. With NSPrefersDisplaySafeAreaCompatibilityMode set
+	// correctly, none of it should be needed.
 	func setKiosk(_ on: Bool) {
-		guard on != kiosk, let screen = window.screen else { return }
+		guard on != kiosk else { return }
 		kiosk = on
-		if on {
-			if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
-			savedFrame = window.frame
-			savedStyle = window.styleMask
-			NSApp.presentationOptions = [.hideMenuBar, .hideDock]
-			window.unconstrained = true
-			webView.fullBleed = true
-			// A titled window sizes its contentView to the content layout rect, which
-			// is where the last 33pt went. Borderless gives the contentView the frame.
-			window.styleMask = [.borderless]
-			window.setFrame(screen.frame, display: true)
-			window.makeKeyAndOrderFront(nil)
-		} else {
-			window.unconstrained = false
-			webView.fullBleed = false
-			NSApp.presentationOptions = []
-			if let style = savedStyle { window.styleMask = style }
-			if let f = savedFrame { window.setFrame(f, display: true) }
-			window.makeKeyAndOrderFront(nil)
+		if on != window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+		// Fullscreen animates; measure once it has settled.
+		DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
+			guard let self = self, let screen = self.window.screen else { return }
+			let f = self.window.frame
+			logLine("fullscreen \(on): window \(Int(f.width))x\(Int(f.height)) " +
+			        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
+			        "webView \(Int(self.webView.frame.width))x\(Int(self.webView.frame.height)) " +
+			        "safeAreaTop \(self.webView.safeAreaInsets.top) " +
+			        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
+			self.updateHUD()
 		}
-		let f = window.frame
-		logLine("kiosk \(on): asked \(Int(screen.frame.width))x\(Int(screen.frame.height)) got " +
-		        "window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
-		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
-		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
-		// webView IS the contentView, so size it from the window, not from itself.
-		webView.frame = NSRect(origin: .zero, size: window.frame.size)
-		webView.needsLayout = true
-		webView.layoutSubtreeIfNeeded()
-		logLine("  webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
-		        "safeAreaTop \(webView.safeAreaInsets.top) fullBleed \(webView.fullBleed) " +
-		        "contentLayoutRect \(Int(window.contentLayoutRect.width))x\(Int(window.contentLayoutRect.height))")
-		updateHUD()
 	}
 
 	// MARK: - Extension injection
