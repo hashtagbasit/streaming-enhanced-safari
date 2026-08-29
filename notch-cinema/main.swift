@@ -312,11 +312,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			window.unconstrained = true
 			NSApp.presentationOptions = [.autoHideMenuBar, .autoHideDock]
 			window.styleMask = .borderless
+			// Every measurement says the page owns the band, yet it renders black, so
+			// the system is compositing over us there. The menu bar region stays
+			// system-owned at normal window level even while auto-hidden.
+			window.level = NSWindow.Level(rawValue: NSWindow.Level.mainMenu.rawValue + 1)
 			window.setFrame(screen.frame, display: true)
 		} else {
 			window.unconstrained = false
 			webView.fullBleed = false
 			NSApp.presentationOptions = []
+			window.level = .normal
 			if let style = savedStyle { window.styleMask = style }
 			if let f = savedFrame { window.setFrame(f, display: true) }
 		}
@@ -327,7 +332,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		let f = window.frame
 		logLine("  screen.safeAreaInsets.top \(screen.safeAreaInsets.top) " +
 		        "auxTopLeft \(Int(screen.auxiliaryTopLeftArea?.width ?? 0))x\(Int(screen.auxiliaryTopLeftArea?.height ?? 0))")
-		logLine("kiosk \(on): window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
+		logLine("kiosk \(on): level \(window.level.rawValue) window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
 		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
 		        "webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
 		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
