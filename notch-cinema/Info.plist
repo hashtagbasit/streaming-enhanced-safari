@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key>
+	<string>Notch Cinema</string>
+	<key>CFBundleDisplayName</key>
+	<string>Notch Cinema</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.local.notchcinema</string>
+	<key>CFBundleExecutable</key>
+	<string>NotchCinema</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>13.0</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSPrincipalClass</key>
+	<string>NSApplication</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.video</string>
+
+	<!-- The whole point: opt out of the display safe area so the window's
+	     content extends into the band beside the notch in fullscreen. -->
+	<key>NSPrefersDisplaySafeAreaLayoutGuide</key>
+	<false/>
+</dict>
+</plist>

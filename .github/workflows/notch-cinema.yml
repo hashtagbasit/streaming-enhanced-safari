@@ -1,0 +1,58 @@
+name: Build Notch Cinema
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'notch-cinema/**'
+      - '.github/workflows/notch-cinema.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build app
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: swiftc --version
+
+      # Assembled by hand rather than through an .xcodeproj: it is a single
+      # source file, and this keeps the Info.plist (where the safe-area opt-out
+      # lives) plainly visible instead of buried in build settings.
+      - name: Compile and assemble bundle
+        run: |
+          APP="$RUNNER_TEMP/Notch Cinema.app"
+          mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
+          cp notch-cinema/Info.plist "$APP/Contents/Info.plist"
+          printf 'APPL????' > "$APP/Contents/PkgInfo"
+          swiftc -O \
+            -target arm64-apple-macos13.0 \
+            -framework Cocoa -framework WebKit \
+            -o "$APP/Contents/MacOS/NotchCinema" \
+            notch-cinema/main.swift
+          echo "APP=$APP" >> "$GITHUB_ENV"
+
+      - name: Verify the safe-area opt-out survived into the bundle
+        run: |
+          VALUE=$(/usr/libexec/PlistBuddy -c "Print :NSPrefersDisplaySafeAreaLayoutGuide" "$APP/Contents/Info.plist")
+          echo "NSPrefersDisplaySafeAreaLayoutGuide = $VALUE"
+          [ "$VALUE" = "false" ] || { echo "::error::safe-area opt-out missing"; exit 1; }
+          file "$APP/Contents/MacOS/NotchCinema"
+
+      - name: Ad-hoc sign
+        run: |
+          codesign --force --deep --sign - "$APP"
+          codesign --verify --deep --strict "$APP" && echo "signature OK"
+
+      - name: Package
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/out/NotchCinema.zip"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NotchCinema-macOS-app
+          path: ${{ runner.temp }}/out/NotchCinema.zip
+          if-no-files-found: error
