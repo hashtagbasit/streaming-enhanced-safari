@@ -78,7 +78,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	private let safariUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) " +
 		"AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15"
 
-	private let startURL = URL(string: "https://www.netflix.com")!
+	private var startURL: URL {
+		if let override = ProcessInfo.processInfo.environment["NOTCH_URL"], let u = URL(string: override) { return u }
+		return URL(string: "https://www.netflix.com")!
+	}
 
 	func applicationDidFinishLaunching(_ note: Notification) {
 		let config = WKWebViewConfiguration()
