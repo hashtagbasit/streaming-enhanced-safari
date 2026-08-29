@@ -127,10 +127,52 @@
 			" objectFit=" + cs.objectFit + " videos=" + document.querySelectorAll("video").length;
 	}
 
+	// WebKit keeps page content inside the safe area unless the page opts in with
+	// viewport-fit=cover. Patched only while cinema mode is on, and restored after,
+	// since a viewport meta changes layout semantics on a desktop site.
+	let savedViewport = null;
+
+	function setViewportFitCover(on) {
+		const m = document.querySelector('meta[name="viewport"]');
+		if (on) {
+			if (!m) {
+				savedViewport = { created: true, el: null };
+				const el = document.createElement("meta");
+				el.name = "viewport";
+				el.content = "width=device-width, initial-scale=1, viewport-fit=cover";
+				document.head.appendChild(el);
+				savedViewport.el = el;
+				globalThis.__seLog("viewport: none present, added one");
+				return;
+			}
+			savedViewport = { created: false, el: m, content: m.getAttribute("content") };
+			const c = m.getAttribute("content") || "";
+			if (!/viewport-fit/.test(c)) m.setAttribute("content", c + (c ? ", " : "") + "viewport-fit=cover");
+			globalThis.__seLog("viewport: " + m.getAttribute("content"));
+		} else if (savedViewport) {
+			if (savedViewport.created) savedViewport.el.remove();
+			else savedViewport.el.setAttribute("content", savedViewport.content);
+			savedViewport = null;
+		}
+	}
+
+	// Tells us straight out whether WebKit is reporting a safe area to the page.
+	function reportSafeArea() {
+		const probe = document.createElement("div");
+		probe.style.cssText = "position:fixed;top:0;left:0;height:env(safe-area-inset-top,0px);width:1px;pointer-events:none";
+		document.documentElement.appendChild(probe);
+		const top = getComputedStyle(probe).height;
+		probe.remove();
+		globalThis.__seLog("env(safe-area-inset-top) = " + top +
+			" | innerHeight " + innerHeight + " outerHeight " + outerHeight +
+			" screen.height " + screen.height + " avail " + screen.availHeight + " dpr " + devicePixelRatio);
+	}
+
 	globalThis.__seCinema = function (fit) {
 		if (cinemaStyle) {
 			cinemaStyle.remove();
 			cinemaStyle = null;
+			setViewportFitCover(false);
 			call("windowFullscreen", { on: false });
 			setTimeout(function () { globalThis.__seLog(describeVideo("cinema off")); }, 400);
 			return "off";
@@ -139,8 +181,12 @@
 		cinemaStyle.id = "__se_cinema__";
 		cinemaStyle.textContent = "video{object-fit:" + fit + "!important}";
 		document.documentElement.appendChild(cinemaStyle);
+		setViewportFitCover(true);
 		call("windowFullscreen", { on: true });
-		setTimeout(function () { globalThis.__seLog(describeVideo("cinema on fit=" + fit)); }, 400);
+		setTimeout(function () {
+			globalThis.__seLog(describeVideo("cinema on fit=" + fit));
+			reportSafeArea();
+		}, 600);
 		return "on";
 	};
 
