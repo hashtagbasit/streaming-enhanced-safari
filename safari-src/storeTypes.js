@@ -138,7 +138,8 @@ var defaultSettings = {
 		scrollVolume: true,
 		showYear: false,
 		dimLowRatings: false,
-		stretch: "off"
+		stretch: "off",
+		stretchZoom: 1
 	},
 	Statistics: {
 		AmazonAdTimeSkipped: 0,
