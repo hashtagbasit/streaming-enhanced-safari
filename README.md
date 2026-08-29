@@ -82,6 +82,35 @@ every push and fails the build if any of these regress — SVG icons, MV2 keys,
 `webRequest`, the MV2 `web_accessible_resources` form, a content-script host that
 isn't in `host_permissions`, or a manifest entry pointing at a file that doesn't exist.
 
+## Additions beyond upstream
+
+### Video stretch
+
+A shared `Video.stretch` setting, exposed as a dropdown in both the popup and the
+options page, applying to all six services:
+
+| Mode | CSS | Effect |
+|---|---|---|
+| Off | — | Untouched |
+| Stretch to fill | `object-fit: fill` | Fills the player, distorts the picture |
+| Zoom to fill | `object-fit: cover` | Fills by cropping the edges, keeps proportions |
+
+Implemented as `applyStretch()` in `shared-functions.js`, called from each platform's
+existing `MutationObserver` callback. Two things constrain the implementation:
+
+- It styles through an injected stylesheet plus a class on the `<video>`, not inline
+  styles — these players rewrite the video element's inline `style` continuously.
+- It only touches `classList` when the class is actually wrong. It runs inside the
+  observers, so an unconditional DOM write would retrigger them forever. A `watch` on
+  the setting handles the paused case, where no mutations arrive to drive the observer.
+
+**Limitation:** `object-fit` only helps when the black bars come from the player
+letterboxing the video element. Bars *baked into the stream* — a 2.39:1 film encoded
+inside a 16:9 frame — leave the element's aspect matching the stream's, and neither
+mode changes anything. That case needs a `transform: scale()` crop instead.
+
+English strings only; `fallbackLocale: "en"` covers the other twelve locales.
+
 ## Known Safari caveats
 
 - **Site access is not automatic.** Safari defaults every host to "Ask"; nothing runs until you grant access.
