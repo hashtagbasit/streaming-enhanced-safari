@@ -59,6 +59,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	var injectedSite: String?
 	var wasFullscreen = false
 	var kiosk = false
+	var savedFrame: NSRect?
+	var savedStyle: NSWindow.StyleMask?
 
 	// Which flattened bundle to inject for a given host.
 	private static let siteForHost: [(match: String, site: String)] = [
@@ -129,8 +131,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		buildMenu()
 
 		let nc = NotificationCenter.default
-		nc.addObserver(self, selector: #selector(didEnterFullScreen),
-		               name: NSWindow.didEnterFullScreenNotification, object: window)
 		for name: NSNotification.Name in [
 			NSWindow.didEnterFullScreenNotification,
 			NSWindow.didExitFullScreenNotification,
@@ -279,42 +279,40 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 	// for the clamp caused by the wrong Info.plist key, and they coincided with
 	// WindowServer hitches. With NSPrefersDisplaySafeAreaCompatibilityMode set
 	// correctly, none of it should be needed.
-	// AppKit reserves the notch band for a fullscreen window, and the correct
-	// Info.plist key does not change that - it governs resolution scaling. So take
-	// native fullscreen for the menu-bar handling, then grow the frame by the band
-	// with the constraint lifted. These two were never combined before: the
-	// full-frame window predated the key fix, and the key fix removed it.
-	@objc func didEnterFullScreen() {
-		guard kiosk, let screen = window.screen else { return }
-		window.unconstrained = true
-		webView.fullBleed = true
-		window.setFrame(screen.frame, display: true)
+	// Old-style manual fullscreen, the only thing that reaches the notch band.
+	// Native toggleFullScreen moves the window to its own Space and renders below
+	// the notch by design - the log caught it reverting a grown frame within a
+	// second. Borderless + auto-hidden menu bar and dock + the screen's own frame
+	// is what IINA does, and it needs the compatibility-mode key set as well.
+	func setKiosk(_ on: Bool) {
+		guard on != kiosk, let screen = window.screen else { return }
+		kiosk = on
+		if on {
+			if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
+			savedFrame = window.frame
+			savedStyle = window.styleMask
+			webView.fullBleed = true
+			window.unconstrained = true
+			NSApp.presentationOptions = [.autoHideMenuBar, .autoHideDock]
+			window.styleMask = .borderless
+			window.setFrame(screen.frame, display: true)
+		} else {
+			window.unconstrained = false
+			webView.fullBleed = false
+			NSApp.presentationOptions = []
+			if let style = savedStyle { window.styleMask = style }
+			if let f = savedFrame { window.setFrame(f, display: true) }
+		}
+		window.makeKeyAndOrderFront(nil)
 		webView.frame = NSRect(origin: .zero, size: window.frame.size)
 		webView.needsLayout = true
 		webView.layoutSubtreeIfNeeded()
 		let f = window.frame
-		logLine("grew to \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
+		logLine("kiosk \(on): window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
 		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
 		        "webView \(Int(webView.frame.width))x\(Int(webView.frame.height)) " +
 		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
-	}
-
-	func setKiosk(_ on: Bool) {
-		guard on != kiosk else { return }
-		kiosk = on
-		if !on { window.unconstrained = false; webView.fullBleed = false }
-		if on != window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
-		// Fullscreen animates; measure once it has settled.
-		DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { [weak self] in
-			guard let self = self, let screen = self.window.screen else { return }
-			let f = self.window.frame
-			logLine("fullscreen \(on): window \(Int(f.width))x\(Int(f.height)) " +
-			        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
-			        "webView \(Int(self.webView.frame.width))x\(Int(self.webView.frame.height)) " +
-			        "safeAreaTop \(self.webView.safeAreaInsets.top) " +
-			        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
-			self.updateHUD()
-		}
+		updateHUD()
 	}
 
 	// MARK: - Extension injection
