@@ -1,6 +1,16 @@
 import Cocoa
 import WebKit
 
+// AppKit clamps a titled window's frame so its title bar cannot slide under the
+// menu bar - measured as setFrame(1470x956) coming back as 1470x923, exactly the
+// notch band. constrainFrameRect is where that happens, so kiosk mode opts out.
+final class KioskWindow: NSWindow {
+	var unconstrained = false
+	override func constrainFrameRect(_ frameRect: NSRect, to screen: NSScreen?) -> NSRect {
+		unconstrained ? frameRect : super.constrainFrameRect(frameRect, to: screen)
+	}
+}
+
 // NSLog from an ad-hoc signed app doesn't reliably reach the unified log, so
 // diagnostics go to a file we can actually read back.
 let logURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0]
@@ -24,7 +34,7 @@ func logLine(_ message: String) {
 // instead of being inset below it - which is the thing Safari will not do.
 final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, WKUIDelegate {
 
-	var window: NSWindow!
+	var window: KioskWindow!
 	var webView: WKWebView!
 	var hud: NSTextField!
 	var hudVisible = true
@@ -89,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		webView.autoresizingMask = [.width, .height]
 		webView.setValue(false, forKey: "drawsBackground")
 
-		window = NSWindow(
+		window = KioskWindow(
 			contentRect: NSRect(x: 0, y: 0, width: 1440, height: 900),
 			styleMask: [.titled, .closable, .miniaturizable, .resizable],
 			backing: .buffered,
@@ -259,6 +269,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			if window.styleMask.contains(.fullScreen) { window.toggleFullScreen(nil) }
 			savedFrame = window.frame
 			NSApp.presentationOptions = [.hideMenuBar, .hideDock]
+			window.unconstrained = true
 			window.styleMask.insert(.fullSizeContentView)
 			window.titlebarAppearsTransparent = true
 			window.titleVisibility = .hidden
@@ -268,6 +279,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			window.setFrame(screen.frame, display: true)
 			window.makeKeyAndOrderFront(nil)
 		} else {
+			window.unconstrained = false
 			NSApp.presentationOptions = []
 			window.titlebarAppearsTransparent = false
 			window.titleVisibility = .visible
@@ -277,7 +289,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 			if let f = savedFrame { window.setFrame(f, display: true) }
 		}
 		let f = window.frame
-		logLine("kiosk \(on): window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
+		logLine("kiosk \(on): asked \(Int(screen.frame.width))x\(Int(screen.frame.height)) got " +
+		        "window \(Int(f.width))x\(Int(f.height)) at y=\(Int(f.origin.y)) " +
 		        "screen \(Int(screen.frame.width))x\(Int(screen.frame.height)) " +
 		        "usingNotchBand \(abs(f.height - screen.frame.height) < 1)")
 		updateHUD()
