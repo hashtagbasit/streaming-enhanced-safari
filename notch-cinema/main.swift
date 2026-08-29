@@ -24,6 +24,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		config.preferences.javaScriptCanOpenWindowsAutomatically = true
 		config.allowsAirPlayForMediaPlayback = true
 
+		// WKWebView ships with the Fullscreen API off, which is why sites report
+		// "your browser does not support fullscreen" and player buttons do nothing.
+		// Set through KVC against both spellings so this compiles and works across
+		// OS versions without betting on one property name.
+		let prefs = config.preferences
+		for key in ["elementFullscreenEnabled", "fullScreenEnabled"] {
+			let setter = "set" + key.prefix(1).uppercased() + key.dropFirst() + ":"
+			if prefs.responds(to: NSSelectorFromString(setter)) {
+				prefs.setValue(true, forKey: key)
+				NSLog("enabled WKPreferences.%@", key)
+			}
+		}
+
 		webView = WKWebView(frame: NSRect(x: 0, y: 0, width: 1440, height: 900), configuration: config)
 		webView.customUserAgent = safariUA
 		webView.navigationDelegate = self
@@ -124,6 +137,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 		let fs = viewMenu.addItem(withTitle: "Enter Full Screen", action: #selector(NSWindow.toggleFullScreen(_:)), keyEquivalent: "f")
 		fs.keyEquivalentModifierMask = [.control, .command]
 		viewMenu.addItem(withTitle: "Toggle Measurements", action: #selector(toggleHUD), keyEquivalent: "d")
+		viewMenu.addItem(.separator())
+		let fit = viewMenu.addItem(withTitle: "Fill Window with Video", action: #selector(fillWindowFit), keyEquivalent: "F")
+		fit.keyEquivalentModifierMask = [.command, .shift]
+		let crop = viewMenu.addItem(withTitle: "Fill Window with Video (Crop)", action: #selector(fillWindowCrop), keyEquivalent: "G")
+		crop.keyEquivalentModifierMask = [.command, .shift]
 		viewItem.submenu = viewMenu
 		main.addItem(viewItem)
 
@@ -139,6 +157,37 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 
 		NSApp.mainMenu = main
 	}
+
+	// Independent of the page's own fullscreen: pins the video to our window,
+	// which already covers the notch band. Works even where a site's fullscreen
+	// control is broken or its player refuses to cooperate.
+	private func fillWindow(objectFit: String) {
+		let js = """
+		(function () {
+		  const id = '__notch_fill__';
+		  const existing = document.getElementById(id);
+		  if (existing) { existing.remove(); return 'off'; }
+		  if (!document.querySelector('video')) return 'no video found';
+		  const s = document.createElement('style');
+		  s.id = id;
+		  s.textContent = `
+		    video { position: fixed !important; inset: 0 !important;
+		            width: 100vw !important; height: 100vh !important;
+		            z-index: 2147483647 !important; background: #000 !important;
+		            object-fit: \(objectFit) !important; }
+		    html, body { overflow: hidden !important; background: #000 !important; }
+		  `;
+		  document.documentElement.appendChild(s);
+		  return 'on';
+		})()
+		"""
+		webView.evaluateJavaScript(js) { result, error in
+			NSLog("fillWindow(%@) -> %@", objectFit, String(describing: error ?? result as Any))
+		}
+	}
+
+	@objc func fillWindowFit() { fillWindow(objectFit: "contain") }
+	@objc func fillWindowCrop() { fillWindow(objectFit: "cover") }
 
 	@objc func toggleHUD() { hudVisible.toggle(); updateHUD() }
 	@objc func reload() { webView.reload() }
