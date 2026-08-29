@@ -739,6 +739,40 @@ async function setRatingOnCard(card, data, title) {
 		if (getIsTransparent(data?.score, vote_count < 50)) position?.appendChild(greyOverlay);
 	}
 }
+var stretchStyleId = "streamingEnhancedStretchStyle";
+var stretchClasses = {
+	fill: "se-stretch-fill",
+	zoom: "se-stretch-zoom"
+};
+function injectStretchStyle() {
+	if (document.getElementById(stretchStyleId)) return;
+	const style = document.createElement("style");
+	style.id = stretchStyleId;
+	style.textContent = `
+      video.${stretchClasses.fill} { object-fit: fill !important; }
+      video.${stretchClasses.zoom} { object-fit: cover !important; }
+  `;
+	(document.head ?? document.documentElement).appendChild(style);
+}
+// Called from every platform's MutationObserver, so it must not mutate the DOM
+// unless the class is actually wrong - otherwise it retriggers itself forever.
+function applyStretch(video) {
+	if (!video) return;
+	const mode = settings.value.Video?.stretch ?? "off";
+	const wanted = stretchClasses[mode];
+	if (!wanted) {
+		if (video.classList.contains(stretchClasses.fill) || video.classList.contains(stretchClasses.zoom)) video.classList.remove(stretchClasses.fill, stretchClasses.zoom);
+		return;
+	}
+	injectStretchStyle();
+	const unwanted = mode === "fill" ? stretchClasses.zoom : stretchClasses.fill;
+	if (video.classList.contains(unwanted)) video.classList.remove(unwanted);
+	if (!video.classList.contains(wanted)) video.classList.add(wanted);
+}
+// A paused video produces no mutations, so react to the setting directly too.
+watch(() => settings.value.Video?.stretch, () => {
+	for (const video of document.querySelectorAll("video")) applyStretch(video);
+});
 function OnFullScreenChange() {
 	let video;
 	if (isDisney) video = Array.from(document.querySelectorAll("video")).find((v) => v.checkVisibility());
@@ -756,4 +790,4 @@ async function startPlayOnFullScreen() {
 	else removeEventListener("fullscreenchange", OnFullScreenChange);
 }
 //#endregion
-export { getDiffInDays as a, startSharedFunctions as c, getCurrentEpisodeNumber as i, sendMessage as l, createSlider as n, getIsTransparent as o, getColorForRating as r, parseAdTime as s, Platforms as t };
+export { getDiffInDays as a, startSharedFunctions as c, applyStretch as f, getCurrentEpisodeNumber as i, sendMessage as l, createSlider as n, getIsTransparent as o, getColorForRating as r, parseAdTime as s, Platforms as t };

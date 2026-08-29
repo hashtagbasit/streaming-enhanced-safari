@@ -1,5 +1,5 @@
 import { D as createVNode, On as unref, St as resolveComponent, Yt as withDirectives, Zn as normalizeClass, _ as createBaseVNode, b as createElementBlock, bt as renderList, er as normalizeStyle, g as computed, k as defineComponent, mt as openBlock, o as Fragment, tr as toDisplayString, un as isRef, v as createBlock, vn as ref, y as createCommentVNode } from "./runtime-core.esm-bundler.js";
-import { f as vModelText, i as useOptionsStore, l as storeToRefs } from "./options.store.js";
+import { d as vModelSelect, f as vModelText, i as useOptionsStore, l as storeToRefs } from "./options.store.js";
 import { t as Switch_default } from "./Switch.js";
 import { t as _plugin_vue_export_helper_default } from "./plugin-vue_export-helper.js";
 import { t as help_circle_default } from "./help-circle.js";
@@ -2406,6 +2406,8 @@ var _hoisted_7 = {
 var _hoisted_8 = { class: "flex" };
 var _hoisted_9 = ["onUpdate:modelValue", "disabled"];
 var _hoisted_10 = ["onClick"];
+var _hoisted_stretchRow = { class: "line flex" };
+var _hoisted_stretchDesc = { class: "description" };
 var _hoisted_11 = { class: "line flex" };
 var _hoisted_12 = { class: "description" };
 var _hoisted_13 = { class: "line flex" };
@@ -2518,6 +2520,16 @@ var SharedSettings_default = /* @__PURE__ */ defineComponent({
 				}, null, 8, ["modelValue"])]),
 				createBaseVNode("p", _hoisted_16, toDisplayString(_ctx.$t("scrollVolumeDescription")), 1),
 				_cache[19] || (_cache[19] = createBaseVNode("hr", null, null, -1)),
+				createBaseVNode("div", _hoisted_stretchRow, [createBaseVNode("p", null, toDisplayString(_ctx.$t("stretchSwitch")), 1), withDirectives(createBaseVNode("select", {
+					"onUpdate:modelValue": _cache[60] || (_cache[60] = ($event) => unref(settings).Video.stretch = $event),
+					class: "select select-bordered select-sm ml-auto"
+				}, [
+					createBaseVNode("option", { value: "off" }, toDisplayString(_ctx.$t("stretchOff")), 1),
+					createBaseVNode("option", { value: "fill" }, toDisplayString(_ctx.$t("stretchFill")), 1),
+					createBaseVNode("option", { value: "zoom" }, toDisplayString(_ctx.$t("stretchZoom")), 1)
+				], 512), [[vModelSelect, unref(settings).Video.stretch]])]),
+				createBaseVNode("p", _hoisted_stretchDesc, toDisplayString(_ctx.$t("stretchDescription")), 1),
+				_cache[61] || (_cache[61] = createBaseVNode("hr", null, null, -1)),
 				createBaseVNode("div", _hoisted_17, [createBaseVNode("p", null, toDisplayString(_ctx.$t("showYearSwitch")), 1), createVNode(_component_Switch, {
 					modelValue: unref(settings).Video.showYear,
 					"onUpdate:modelValue": _cache[5] || (_cache[5] = ($event) => unref(settings).Video.showYear = $event),

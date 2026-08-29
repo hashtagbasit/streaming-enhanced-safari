@@ -20,6 +20,22 @@ jobs:
       - name: Check manifest is MV3 and every referenced file exists
         run: python3 .github/scripts/validate_manifest.py safari-src
 
+      # The extension ships as pre-built ES modules that get hand-patched, so a
+      # typo would otherwise only surface as a silent no-op inside Safari.
+      - name: Parse every shipped module
+        run: |
+          fail=0
+          for f in safari-src/*.js; do
+            cp "$f" "$RUNNER_TEMP/$(basename "${f%.js}").mjs"
+            if ! node --check "$RUNNER_TEMP/$(basename "${f%.js}").mjs" 2>"$RUNNER_TEMP/err"; then
+              echo "::error file=$f::syntax error"
+              cat "$RUNNER_TEMP/err"
+              fail=1
+            fi
+          done
+          [ $fail -eq 0 ] && echo "all $(ls safari-src/*.js | wc -l | tr -d ' ') modules parse cleanly"
+          exit $fail
+
   build:
     name: Convert and build
     runs-on: macos-15

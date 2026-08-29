@@ -1,7 +1,7 @@
 import { t as require_browser_polyfill } from "./browser-polyfill.js";
 import { Ht as watch, vn as ref } from "./runtime-core.esm-bundler.js";
 import { r as useBrowserSyncStorage, t as defaultSettings } from "./storeTypes.js";
-import { c as startSharedFunctions, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, s as parseAdTime, t as Platforms } from "./shared-functions.js";
+import { c as startSharedFunctions, f as applyStretch, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, s as parseAdTime, t as Platforms } from "./shared-functions.js";
 require_browser_polyfill();
 var { data: settings, promise } = useBrowserSyncStorage("settings", defaultSettings);
 var hostname = globalThis.location.hostname;
@@ -54,6 +54,7 @@ function Disney() {
 	if (settings.value.Disney?.speedSlider) Disney_SpeedSlider(video);
 	if (isDisney) Disney_addHomeButton();
 	if (settings.value.Video?.scrollVolume) Disney_scrollVolume(video);
+	applyStretch(video);
 }
 async function Disney_skipAd(video) {
 	if (video && !video.paused) {

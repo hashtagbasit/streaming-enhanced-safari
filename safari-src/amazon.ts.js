@@ -1,6 +1,6 @@
 import { Ht as watch, vn as ref } from "./runtime-core.esm-bundler.js";
 import { r as useBrowserSyncStorage, t as defaultSettings } from "./storeTypes.js";
-import { c as startSharedFunctions, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, s as parseAdTime, t as Platforms } from "./shared-functions.js";
+import { c as startSharedFunctions, f as applyStretch, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, s as parseAdTime, t as Platforms } from "./shared-functions.js";
 //#region src/content-script/amazon.ts
 var { data: settings, promise } = useBrowserSyncStorage("settings", defaultSettings);
 var ua = navigator.userAgent;
@@ -57,6 +57,7 @@ function Amazon() {
 	if (settings.value.Amazon?.speedSlider) Amazon_SpeedSlider(video);
 	if (settings.value.Amazon?.xray) Amazon_xray();
 	if (settings.value.Video?.scrollVolume) Amazon_scrollVolume();
+	applyStretch(video);
 }
 async function Amazon_scrollVolume() {
 	const volumeControl = document.querySelector("[aria-label=\"Volume\"]:not(.enhanced)");

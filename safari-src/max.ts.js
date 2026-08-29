@@ -1,6 +1,6 @@
 import { vn as ref } from "./runtime-core.esm-bundler.js";
 import { r as useBrowserSyncStorage, t as defaultSettings } from "./storeTypes.js";
-import { c as startSharedFunctions, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, t as Platforms } from "./shared-functions.js";
+import { c as startSharedFunctions, f as applyStretch, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, t as Platforms } from "./shared-functions.js";
 //#region src/content-script/max.ts
 var { data: settings, promise } = useBrowserSyncStorage("settings", defaultSettings);
 var videoSpeed = ref(1);
@@ -37,6 +37,7 @@ async function HBO() {
 	if (settings.value.HBO?.skipCredits) HBO_Credits(time);
 	if (settings.value.HBO?.watchCredits) HBO_Watch_Credits(video);
 	if (settings.value.HBO?.speedSlider) HBO_SpeedSlider(video);
+	applyStretch(video);
 }
 function HBO_Intro(video, time) {
 	if (getCurrentEpisodeNumber(document.querySelector("[data-testid=\"player-ux-season-episode\"]")?.textContent) == 1) return;

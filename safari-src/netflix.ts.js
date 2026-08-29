@@ -1,6 +1,6 @@
 import { vn as ref } from "./runtime-core.esm-bundler.js";
 import { n as useBrowserLocalStorage, r as useBrowserSyncStorage, t as defaultSettings } from "./storeTypes.js";
-import { c as startSharedFunctions, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, t as Platforms } from "./shared-functions.js";
+import { c as startSharedFunctions, f as applyStretch, i as getCurrentEpisodeNumber, l as sendMessage, n as createSlider, t as Platforms } from "./shared-functions.js";
 //#region src/content-script/netflix.ts
 startSharedFunctions(Platforms.Netflix);
 var { data: settings, promise } = useBrowserSyncStorage("settings", defaultSettings);
@@ -72,6 +72,7 @@ function Netflix() {
 	if (NSettings?.skipBlocked) Netflix_General("[data-uia=\"interrupt-autoplay-continue\"]", "Blocked skipped");
 	if (NSettings?.speedSlider && video) Netflix_SpeedSlider(video);
 	if (settings.value.Video?.scrollVolume && video) Netflix_scrollVolume(video);
+	applyStretch(video);
 	if (NSettings?.removeGames) Netflix_removeGames();
 	if (NSettings?.hideTitles) addHideTitleButton();
 }

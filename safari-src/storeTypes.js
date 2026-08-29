@@ -137,7 +137,8 @@ var defaultSettings = {
 		doubleClick: true,
 		scrollVolume: true,
 		showYear: false,
-		dimLowRatings: false
+		dimLowRatings: false,
+		stretch: "off"
 	},
 	Statistics: {
 		AmazonAdTimeSkipped: 0,
