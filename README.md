@@ -120,6 +120,28 @@ English strings only; `fallbackLocale: "en"` covers the other twelve locales.
 - **`storage.sync`** is backed by iCloud in Safari and needs you signed in; it degrades to empty reads rather than throwing.
 - The "rate this add-on" link in the options page still points at addons.mozilla.org — cosmetic; the in-page check `typeof polyfill !== "undefined"` is true in every browser.
 
+## The notch, and why it is not here
+
+An attempt to fill the black band beside the MacBook notch during playback was
+built and removed. Recording the outcome so it is not rediscovered:
+
+- Standard fullscreen renders below the notch by design; AppKit reverts a grown
+  window frame within a second. Reaching the band needs old-style manual
+  fullscreen - borderless window, auto-hidden menu bar and dock, frame set to
+  the screen's - together with `NSPrefersDisplaySafeAreaCompatibilityMode` set
+  to false. Both halves are required.
+- In a WKWebView host, four further layers each imposed the same 33pt: WebKit's
+  own fullscreen window, AppKit's frame clamp, the view safe area, and
+  WKWebView's automatic content inset. All were solvable, and page content was
+  confirmed by screenshot to paint across the band.
+- None of it was necessary. Safari's element fullscreen already covers the whole
+  display, so that black is ordinary aspect-ratio letterboxing - a 1.78:1 video
+  on a 1.54:1 screen - and scaling the video in the page removes it. The
+  App Store extension "Unbar" does exactly that, which is what identified the
+  mechanism.
+
+The fix belongs in this extension's stretch feature, not in a separate host app.
+
 ## Status
 
 The conversion is complete and statically validated, but **has not been run in Safari yet**
