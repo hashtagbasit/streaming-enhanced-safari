@@ -190,10 +190,28 @@
 		return "on";
 	};
 
+	// Every measurement says the page occupies the notch band while the picture
+	// still looks absent there. Page paint and protected video paint are separate
+	// layers, so mark the band with plain DOM: if the marker shows and the video
+	// does not, the video layer is being clipped and the page is not.
+	let marker = null;
+	globalThis.__seMarker = function () {
+		if (marker) { marker.remove(); marker = null; return "marker off"; }
+		marker = document.createElement("div");
+		marker.style.cssText =
+			"position:fixed!important;top:0!important;left:0!important;right:0!important;" +
+			"height:34px!important;z-index:2147483647!important;pointer-events:none!important;" +
+			"background:linear-gradient(90deg,#f00 0%,#f00 40%,#0f0 40%,#0f0 60%,#f00 60%);";
+		document.documentElement.appendChild(marker);
+		globalThis.__seLog("marker on: 34px strip pinned to top of viewport");
+		return "marker on";
+	};
+
 	// Capture phase, because these players stop propagation on keydown.
 	globalThis.addEventListener("keydown", function (e) {
 		if (!e.ctrlKey || !e.shiftKey) return;
 		const k = (e.key || "").toLowerCase();
+		if (k === "b") { e.preventDefault(); e.stopPropagation(); globalThis.__seMarker(); return; }
 		if (k !== "f" && k !== "g") return;
 		e.preventDefault();
 		e.stopPropagation();
