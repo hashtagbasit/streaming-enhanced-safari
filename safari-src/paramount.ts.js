@@ -1,6 +1,6 @@
 import { Ht as watch, vn as ref } from "./runtime-core.esm-bundler.js";
 import { r as useBrowserSyncStorage, t as defaultSettings } from "./storeTypes.js";
-import { c as startSharedFunctions, l as sendMessage, n as createSlider, t as Platforms } from "./shared-functions.js";
+import { c as startSharedFunctions, f as applyStretch, l as sendMessage, n as createSlider, t as Platforms } from "./shared-functions.js";
 //#region src/content-script/paramount.ts
 var { data: settings, promise } = useBrowserSyncStorage("settings", defaultSettings);
 var videoSpeed = ref(1);
@@ -43,6 +43,7 @@ async function Paramount() {
 	if (settings.value.Paramount?.watchCredits) Paramount_Watch_Credits(video);
 	if (settings.value.Paramount?.speedSlider) Paramount_SpeedSlider(video);
 	if (settings.value.Paramount?.skipAd) Paramount_SkipAd(video);
+	applyStretch(video);
 }
 var lastIntroTime = -1;
 function resetLastIntroTime() {

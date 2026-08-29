@@ -1,5 +1,5 @@
-import { D as createVNode, On as unref, _ as createBaseVNode, b as createElementBlock, g as computed, k as defineComponent, mt as openBlock, o as Fragment, tr as toDisplayString, un as isRef } from "./runtime-core.esm-bundler.js";
-import { i as useOptionsStore, l as storeToRefs } from "./options.store.js";
+import { D as createVNode, On as unref, Yt as withDirectives, _ as createBaseVNode, b as createElementBlock, g as computed, k as defineComponent, mt as openBlock, o as Fragment, tr as toDisplayString, un as isRef } from "./runtime-core.esm-bundler.js";
+import { d as vModelSelect, i as useOptionsStore, l as storeToRefs } from "./options.store.js";
 import { t as Switch_default } from "./Switch.js";
 import { t as help_circle_default } from "./help-circle.js";
 import { t as RouterLinkUp_default } from "./RouterLinkUp.js";
@@ -101,6 +101,15 @@ var _hoisted_32 = {
 var _hoisted_33 = { class: "py-1 m-0 flex" };
 var _hoisted_34 = { class: "tooltip flex" };
 var _hoisted_35 = {
+	class: "tooltip-content text-primary-content",
+	style: {
+		"transform": "unset",
+		"inset": "auto auto var(--tt-off) 0%"
+	}
+};
+var _hoisted_36 = { class: "py-1 m-0 flex" };
+var _hoisted_37 = { class: "tooltip flex" };
+var _hoisted_38 = {
 	class: "tooltip-content text-primary-content",
 	style: {
 		"transform": "unset",
@@ -252,6 +261,18 @@ var SharedOptions_default = /* @__PURE__ */ defineComponent({
 					"onUpdate:modelValue": _cache[7] || (_cache[7] = ($event) => unref(settings).Video.scrollVolume = $event),
 					class: "ml-auto"
 				}, null, 8, ["modelValue"])]),
+				createBaseVNode("div", _hoisted_36, [createBaseVNode("div", _hoisted_37, [
+					createBaseVNode("p", null, toDisplayString(_ctx.$t("stretchSwitch")), 1),
+					createVNode(_component_i_mdi_help_circle, { height: "1rem" }),
+					createBaseVNode("div", _hoisted_38, toDisplayString(_ctx.$t("stretchDescription")), 1)
+				]), withDirectives(createBaseVNode("select", {
+					"onUpdate:modelValue": _cache[14] || (_cache[14] = ($event) => unref(settings).Video.stretch = $event),
+					class: "select select-bordered select-sm ml-auto"
+				}, [
+					createBaseVNode("option", { value: "off" }, toDisplayString(_ctx.$t("stretchOff")), 1),
+					createBaseVNode("option", { value: "fill" }, toDisplayString(_ctx.$t("stretchFill")), 1),
+					createBaseVNode("option", { value: "zoom" }, toDisplayString(_ctx.$t("stretchZoom")), 1)
+				], 512), [[vModelSelect, unref(settings).Video.stretch]])]),
 				createBaseVNode("div", _hoisted_27, [createBaseVNode("div", _hoisted_28, [
 					createBaseVNode("p", null, toDisplayString(_ctx.$t("hideTitlesSwitch")), 1),
 					createVNode(_component_i_mdi_help_circle, { height: "1rem" }),

@@ -4184,6 +4184,46 @@ var messages_default = mergeDeep({}, { "de": {
 			"s": "Scrolling up or down on the Sound Icon will change the volume."
 		}
 	},
+	"stretchSwitch": {
+		"t": 0,
+		"b": {
+			"t": 2,
+			"i": [{ "t": 3 }],
+			"s": "Stretch video:"
+		}
+	},
+	"stretchDescription": {
+		"t": 0,
+		"b": {
+			"t": 2,
+			"i": [{ "t": 3 }],
+			"s": "Removes black bars by making the video fill the player. Stretch distorts the picture to fit; Zoom keeps the proportions and crops the edges instead."
+		}
+	},
+	"stretchOff": {
+		"t": 0,
+		"b": {
+			"t": 2,
+			"i": [{ "t": 3 }],
+			"s": "Off"
+		}
+	},
+	"stretchFill": {
+		"t": 0,
+		"b": {
+			"t": 2,
+			"i": [{ "t": 3 }],
+			"s": "Stretch to fill"
+		}
+	},
+	"stretchZoom": {
+		"t": 0,
+		"b": {
+			"t": 2,
+			"i": [{ "t": 3 }],
+			"s": "Zoom to fill"
+		}
+	},
 	"disneyAdDescription": {
 		"t": 0,
 		"b": {

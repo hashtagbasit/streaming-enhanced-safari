@@ -1,7 +1,7 @@
 import { i as __toESM, t as require_browser_polyfill } from "./browser-polyfill.js";
 import { Cn as toRaw, vn as ref } from "./runtime-core.esm-bundler.js";
 import { r as useBrowserSyncStorage, t as defaultSettings } from "./storeTypes.js";
-import { a as getDiffInDays, c as startSharedFunctions, l as sendMessage, n as createSlider, o as getIsTransparent, r as getColorForRating, t as Platforms } from "./shared-functions.js";
+import { a as getDiffInDays, c as startSharedFunctions, f as applyStretch, l as sendMessage, n as createSlider, o as getIsTransparent, r as getColorForRating, t as Platforms } from "./shared-functions.js";
 //#region src/content-script/crunchyroll.ts
 var import_browser_polyfill = /* @__PURE__ */ __toESM(require_browser_polyfill(), 1);
 startSharedFunctions(Platforms.Crunchyroll);
@@ -187,6 +187,7 @@ async function Crunchyroll() {
 	Crunchyroll_Intro_Outro(video, time);
 	if (settings.value.Crunchyroll?.speedSlider) Crunchyroll_SpeedSlider(video);
 	if (settings.value.Video?.scrollVolume) Crunchyroll_scrollVolume(video);
+	applyStretch(video);
 }
 async function Crunchyroll_profile() {
 	const img = document.querySelector(".avatar-wrapper img");
