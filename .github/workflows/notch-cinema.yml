@@ -56,8 +56,8 @@ jobs:
 
       - name: Verify the safe-area opt-out survived into the bundle
         run: |
-          VALUE=$(/usr/libexec/PlistBuddy -c "Print :NSPrefersDisplaySafeAreaLayoutGuide" "$APP/Contents/Info.plist")
-          echo "NSPrefersDisplaySafeAreaLayoutGuide = $VALUE"
+          VALUE=$(/usr/libexec/PlistBuddy -c "Print :NSPrefersDisplaySafeAreaCompatibilityMode" "$APP/Contents/Info.plist")
+          echo "NSPrefersDisplaySafeAreaCompatibilityMode = $VALUE"
           [ "$VALUE" = "false" ] || { echo "::error::safe-area opt-out missing"; exit 1; }
           file "$APP/Contents/MacOS/NotchCinema"
           echo "--- bundled user scripts ---"

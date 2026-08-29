@@ -25,9 +25,11 @@
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.video</string>
 
-	<!-- The whole point: opt out of the display safe area so the window's
-	     content extends into the band beside the notch in fullscreen. -->
-	<key>NSPrefersDisplaySafeAreaLayoutGuide</key>
+	<!-- The whole point: leave safe-area compatibility mode so the app may use
+	     the band beside the notch. Confirmed against IINA, which sets this and
+	     does render there. NSPrefersDisplaySafeAreaLayoutGuide, tried first, is
+	     not a real key and silently did nothing. -->
+	<key>NSPrefersDisplaySafeAreaCompatibilityMode</key>
 	<false/>
 </dict>
 </plist>
