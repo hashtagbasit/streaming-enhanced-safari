@@ -375,7 +375,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKNavigationDelegate, 
 
 	// MARK: - WKNavigationDelegate
 
+	// NOTCH_DEBUG=1 drives cinema mode and the marker strip without a person in
+	// the loop, so the band can be screenshotted and measured directly.
+	private var debugRan = false
+	private func runDebugProbeIfRequested() {
+		guard !debugRan, ProcessInfo.processInfo.environment["NOTCH_DEBUG"] == "1" else { return }
+		debugRan = true
+		DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+			guard let self = self else { return }
+			self.webView.evaluateJavaScript("globalThis.__seCinema && globalThis.__seCinema('cover')",
+			                                in: nil, in: self.world) { r in logLine("debug cinema -> \(r)") }
+			DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+				self.webView.evaluateJavaScript("globalThis.__seMarker && globalThis.__seMarker()",
+				                                in: nil, in: self.world) { r in logLine("debug marker -> \(r)") }
+			}
+		}
+	}
+
 	func webView(_ w: WKWebView, didFinish n: WKNavigation!) {
+		runDebugProbeIfRequested()
 		window.title = "Notch Cinema — " + (w.title ?? "")
 		updateHUD()
 	}
