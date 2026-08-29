@@ -756,9 +756,55 @@ function injectStretchStyle() {
 }
 // Called from every platform's MutationObserver, so it must not mutate the DOM
 // unless the class is actually wrong - otherwise it retriggers itself forever.
+// Fills the screen by scaling the picture until no letterbox remains.
+//
+// In fullscreen the browser sizes the video to fit the display while preserving
+// aspect, so a 1.78:1 film on a 1.54:1 MacBook screen leaves a band top and
+// bottom - and on a notched Mac the top band is the one beside the camera.
+// object-fit alone cannot recover it when the element is already the shape of
+// the picture, so the element itself is scaled.
+function computeFillScale(video) {
+	const rect = video.getBoundingClientRect();
+	if (!rect.width || !rect.height) return 1;
+	const vw = video.videoWidth, vh = video.videoHeight;
+	let paintedW = rect.width, paintedH = rect.height;
+	if (vw && vh) {
+		// The element letterboxes the stream inside itself under object-fit: contain.
+		const fit = Math.min(rect.width / vw, rect.height / vh);
+		paintedW = vw * fit;
+		paintedH = vh * fit;
+	}
+	const scale = Math.max(
+		globalThis.innerWidth / paintedW,
+		globalThis.innerHeight / paintedH
+	);
+	return Number.isFinite(scale) && scale > 1 ? scale : 1;
+}
+function applyFillScreen(video) {
+	const scale = computeFillScale(video) * (settings.value.Video?.stretchZoom ?? 1);
+	const next = scale > 1.001 ? `scale(${scale.toFixed(4)})` : "";
+	if (video.style.transform !== next) {
+		video.style.setProperty("transform", next, "important");
+		video.style.setProperty("transform-origin", "center center", "important");
+	}
+}
+function clearFillScreen(video) {
+	if (video.style.transform) {
+		video.style.removeProperty("transform");
+		video.style.removeProperty("transform-origin");
+	}
+}
 function applyStretch(video) {
 	if (!video) return;
 	const mode = settings.value.Video?.stretch ?? "off";
+	if (mode === "screen") {
+		injectStretchStyle();
+		if (video.classList.contains(stretchClasses.fill)) video.classList.remove(stretchClasses.fill);
+		if (!video.classList.contains(stretchClasses.zoom)) video.classList.add(stretchClasses.zoom);
+		applyFillScreen(video);
+		return;
+	}
+	clearFillScreen(video);
 	const wanted = stretchClasses[mode];
 	if (!wanted) {
 		if (video.classList.contains(stretchClasses.fill) || video.classList.contains(stretchClasses.zoom)) video.classList.remove(stretchClasses.fill, stretchClasses.zoom);
@@ -770,9 +816,27 @@ function applyStretch(video) {
 	if (!video.classList.contains(wanted)) video.classList.add(wanted);
 }
 // A paused video produces no mutations, so react to the setting directly too.
-watch(() => settings.value.Video?.stretch, () => {
+watch(() => [settings.value.Video?.stretch, settings.value.Video?.stretchZoom], () => {
 	for (const video of document.querySelectorAll("video")) applyStretch(video);
 });
+// The element's box changes on fullscreen and resize without any DOM mutation,
+// and the scale is derived from that box, so recompute on both.
+for (const event of ["fullscreenchange", "webkitfullscreenchange", "resize"]) {
+	globalThis.addEventListener(event, () => {
+		setTimeout(() => {
+			for (const video of document.querySelectorAll("video")) applyStretch(video);
+		}, 120);
+	});
+}
+// Fine-tune in 5% steps, the way a zoom control should behave.
+globalThis.addEventListener("keydown", (event) => {
+	if (!event.shiftKey || !event.altKey) return;
+	const step = event.key === "+" || event.key === "=" ? .05 : event.key === "-" ? -.05 : event.key === "0" ? 0 : null;
+	if (step === null) return;
+	event.preventDefault();
+	const current = settings.value.Video.stretchZoom ?? 1;
+	settings.value.Video.stretchZoom = step === 0 ? 1 : Math.min(2, Math.max(.5, Number((current + step).toFixed(2))));
+}, true);
 function OnFullScreenChange() {
 	let video;
 	if (isDisney) video = Array.from(document.querySelectorAll("video")).find((v) => v.checkVisibility());

@@ -4224,6 +4224,14 @@ var messages_default = mergeDeep({}, { "de": {
 			"s": "Zoom to fill"
 		}
 	},
+	"stretchScreen": {
+		"t": 0,
+		"b": {
+			"t": 2,
+			"i": [{ "t": 3 }],
+			"s": "Fill screen (no black bars)"
+		}
+	},
 	"disneyAdDescription": {
 		"t": 0,
 		"b": {

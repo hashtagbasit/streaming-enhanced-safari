@@ -2526,7 +2526,8 @@ var SharedSettings_default = /* @__PURE__ */ defineComponent({
 				}, [
 					createBaseVNode("option", { value: "off" }, toDisplayString(_ctx.$t("stretchOff")), 1),
 					createBaseVNode("option", { value: "fill" }, toDisplayString(_ctx.$t("stretchFill")), 1),
-					createBaseVNode("option", { value: "zoom" }, toDisplayString(_ctx.$t("stretchZoom")), 1)
+					createBaseVNode("option", { value: "zoom" }, toDisplayString(_ctx.$t("stretchZoom")), 1),
+					createBaseVNode("option", { value: "screen" }, toDisplayString(_ctx.$t("stretchScreen")), 1)
 				], 512), [[vModelSelect, unref(settings).Video.stretch]])]),
 				createBaseVNode("p", _hoisted_stretchDesc, toDisplayString(_ctx.$t("stretchDescription")), 1),
 				_cache[61] || (_cache[61] = createBaseVNode("hr", null, null, -1)),
