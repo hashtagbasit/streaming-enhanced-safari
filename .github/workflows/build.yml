@@ -1,0 +1,126 @@
+name: Build Safari extension
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  APP_NAME: Streaming Enhanced
+  BUNDLE_ID: com.local.streamingenhanced
+
+jobs:
+  validate:
+    name: Validate manifest
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check manifest is MV3 and every referenced file exists
+        run: python3 .github/scripts/validate_manifest.py safari-src
+
+  build:
+    name: Convert and build
+    runs-on: macos-15
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show toolchain
+        run: |
+          sw_vers
+          xcodebuild -version
+          xcrun --find safari-web-extension-converter
+
+      - name: Run safari-web-extension-converter
+        run: |
+          xcrun safari-web-extension-converter safari-src \
+            --project-location "$RUNNER_TEMP/project" \
+            --app-name "$APP_NAME" \
+            --bundle-identifier "$BUNDLE_ID" \
+            --macos-only \
+            --no-prompt \
+            --no-open \
+            --force \
+            --copy-resources \
+            --swift 2>&1 | tee "$RUNNER_TEMP/converter.log"
+
+      - name: Surface converter warnings
+        run: |
+          echo '### safari-web-extension-converter output' >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+          cat "$RUNNER_TEMP/converter.log" >> "$GITHUB_STEP_SUMMARY"
+          echo '```' >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Locate generated project
+        id: proj
+        run: |
+          PROJ=$(find "$RUNNER_TEMP/project" -maxdepth 3 -name '*.xcodeproj' | head -1)
+          if [ -z "$PROJ" ]; then echo "no .xcodeproj produced"; exit 1; fi
+          xcodebuild -list -project "$PROJ"
+          # Don't assume the scheme is named after APP_NAME; read it off the project.
+          SCHEME=$(xcodebuild -list -json -project "$PROJ" \
+            | python3 -c 'import json,sys; print(json.load(sys.stdin)["project"]["schemes"][0])')
+          echo "path=$PROJ" >> "$GITHUB_OUTPUT"
+          echo "scheme=$SCHEME" >> "$GITHUB_OUTPUT"
+          echo "Building scheme: $SCHEME"
+
+      # Ad-hoc signing ("-"), not Developer ID: CI has no signing certificate.
+      # The result runs locally once Safari is set to allow unsigned extensions.
+      - name: Build (ad-hoc signed)
+        run: |
+          xcodebuild \
+            -project "${{ steps.proj.outputs.path }}" \
+            -scheme "${{ steps.proj.outputs.scheme }}" \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            -derivedDataPath "$RUNNER_TEMP/dd" \
+            CODE_SIGN_IDENTITY="-" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            DEVELOPMENT_TEAM="" \
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            build
+
+      - name: Verify the app and its embedded extension
+        run: |
+          APP=$(find "$RUNNER_TEMP/dd/Build/Products/Release" -maxdepth 1 -name '*.app' | head -1)
+          if [ -z "$APP" ]; then echo "no .app produced"; exit 1; fi
+          echo "APP=$APP" >> "$GITHUB_ENV"
+          echo "--- bundle layout ---"
+          ls -la "$APP/Contents/PlugIns/"
+          echo "--- extension resources (manifest must be present) ---"
+          EXT=$(find "$APP/Contents/PlugIns" -maxdepth 1 -name '*.appex' | head -1)
+          test -f "$EXT/Contents/Resources/manifest.json" || { echo "manifest.json missing from .appex"; exit 1; }
+          echo "--- codesign ---"
+          codesign -dv "$APP" 2>&1 || true
+          codesign -dv "$EXT" 2>&1 || true
+
+      - name: Package
+        run: |
+          mkdir -p "$RUNNER_TEMP/out"
+          ditto -c -k --sequesterRsrc --keepParent "$APP" "$RUNNER_TEMP/out/StreamingEnhanced-macOS.zip"
+          cd safari-src && zip -qr "$RUNNER_TEMP/out/safari-src.zip" . -x '.DS_Store'
+
+      - name: Upload built app
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamingEnhanced-macOS-app
+          path: ${{ runner.temp }}/out/StreamingEnhanced-macOS.zip
+          if-no-files-found: error
+
+      - name: Upload Xcode project (for signing with your own Apple ID)
+        uses: actions/upload-artifact@v4
+        with:
+          name: StreamingEnhanced-xcodeproj
+          path: ${{ runner.temp }}/project
+          if-no-files-found: error
+
+      - name: Upload unpacked extension
+        uses: actions/upload-artifact@v4
+        with:
+          name: safari-src
+          path: ${{ runner.temp }}/out/safari-src.zip
+          if-no-files-found: error
